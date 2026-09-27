@@ -5,6 +5,12 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  
+  <!-- 強制瀏覽器與 iOS Web App 抓取最新版本，不使用舊快取 -->
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+  <meta http-equiv="Pragma" content="no-cache">
+  <meta http-equiv="Expires" content="0">
+  
   <title>極簡閱讀器</title>
   
   <!-- 高精準度 OpenCC 繁簡轉換庫 -->
@@ -17,7 +23,7 @@
       --panel-bg: rgba(30, 30, 30, 0.95);
       --border-color: #333;
       --font-size: 26px;
-      --line-height: 1.3;
+      --line-height: 1.4;
     }
 
     * {
@@ -125,7 +131,7 @@
       display: none;
     }
 
-    /* 文章內容區塊：左右邊距改為 0px 佔滿全螢幕 */
+    /* 文章內容區塊：左右邊距 0px 佔滿全螢幕 */
     .content-container {
       width: 100%;
       padding: calc(env(safe-area-inset-top) + 60px) 0px calc(env(safe-area-inset-bottom) + 60px) 0px;
@@ -185,6 +191,7 @@
     const statusText = document.getElementById('statusText');
 
     let isUserDraggingSlider = false;
+    let currentFileKey = null; // 用於識別當前檔案進度的 Key
 
     // 1. 點擊空白處隱藏/顯示選單
     document.addEventListener('click', (e) => {
@@ -192,11 +199,32 @@
       toolbar.classList.toggle('hidden');
     });
 
-    // 2. 頁面滾動時更新 % 數與滑桿位置
+    // 2. 儲存與讀取閱讀進度
+    function saveProgress(scrollTop) {
+      if (!currentFileKey) return;
+      try {
+        localStorage.setItem(`reader_pos_${currentFileKey}`, scrollTop);
+      } catch (e) {
+        console.error('儲存進度失敗:', e);
+      }
+    }
+
+    function getSavedProgress() {
+      if (!currentFileKey) return 0;
+      return parseFloat(localStorage.getItem(`reader_pos_${currentFileKey}`)) || 0;
+    }
+
+    // 3. 頁面滾動時更新 UI 與儲存進度
     function updateProgressUI() {
+      const scrollTop = window.pageYOffset || document.documentElement.scrollTop || 0;
+      
+      // 當載入檔案後，將目前滾動位置寫入 localStorage
+      if (currentFileKey) {
+        saveProgress(scrollTop);
+      }
+
       if (isUserDraggingSlider) return;
 
-      const scrollTop = window.pageYOffset || document.documentElement.scrollTop || 0;
       const scrollHeight = document.documentElement.scrollHeight - document.documentElement.clientHeight;
       
       if (scrollHeight <= 0) {
@@ -216,7 +244,7 @@
       scrollTimer = requestAnimationFrame(updateProgressUI);
     }, { passive: true });
 
-    // 3. 滑桿拖動控制
+    // 4. 滑桿拖動控制
     progressSlider.addEventListener('mousedown', () => isUserDraggingSlider = true);
     progressSlider.addEventListener('touchstart', () => isUserDraggingSlider = true, { passive: true });
 
@@ -233,7 +261,7 @@
     progressSlider.addEventListener('mouseup', () => isUserDraggingSlider = false);
     progressSlider.addEventListener('touchend', () => isUserDraggingSlider = false);
 
-    // 4. 點擊數字按鈕輸入精準進度
+    // 5. 點擊數字按鈕輸入精準進度
     progressBtn.addEventListener('click', (e) => {
       e.stopPropagation();
       const currentVal = parseFloat(progressBtn.textContent) || 0;
@@ -252,10 +280,13 @@
       }
     });
 
-    // 5. 檔案載入、轉碼與引號處理
+    // 6. 檔案載入、轉碼、引號處理與自動恢復進度
     fileInput.addEventListener('change', async (e) => {
       const file = e.target.files[0];
       if (!file) return;
+
+      // 生成此檔案特有的 Key（結合檔名與檔案大小）
+      currentFileKey = `${file.name}_${file.size}`;
 
       statusText.textContent = '載入中...';
       textContent.innerHTML = '';
@@ -291,10 +322,25 @@
         }
 
         textContent.appendChild(fragment);
-        statusText.textContent = '';
-        window.scrollTo(0, 0);
         toolbar.classList.remove('hidden');
-        updateProgressUI();
+
+        // 讀取上次儲存的進度並恢復
+        const savedY = getSavedProgress();
+        if (savedY > 0) {
+          statusText.textContent = '已恢復閱讀進度';
+          setTimeout(() => { statusText.textContent = ''; }, 2000);
+          
+          // 稍微延遲跳轉以確保 DOM 渲染完畢
+          requestAnimationFrame(() => {
+            window.scrollTo(0, savedY);
+            updateProgressUI();
+          });
+        } else {
+          statusText.textContent = '';
+          window.scrollTo(0, 0);
+          updateProgressUI();
+        }
+
       } catch (err) {
         console.error(err);
         statusText.textContent = '載入失敗';
