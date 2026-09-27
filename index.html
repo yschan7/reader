@@ -2,10 +2,14 @@
 <html lang="zh-Hant">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-  <!-- Safari 全螢幕 Web App 模式 -->
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  
+  <!-- iOS Safari 全螢幕 Web App 支援 -->
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="閱讀器">
+  <meta name="mobile-web-app-capable" content="yes">
+  
   <title>極簡閱讀器</title>
   <style>
     :root {
@@ -13,8 +17,8 @@
       --text-color: #e0e0e0;
       --panel-bg: rgba(30, 30, 30, 0.95);
       --border-color: #333;
-      --font-size: 24px;
-      --line-height: 1.2;
+      --font-size: 28px;
+      --line-height: 1.3;
     }
 
     * {
@@ -23,23 +27,16 @@
       padding: 0;
     }
 
-    html {
+    html, body {
+      width: 100%;
+      height: 100%;
       background-color: var(--bg-color);
       color: var(--text-color);
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      overflow: hidden;
     }
 
-    body {
-      background-color: var(--bg-color);
-      min-height: 100vh;
-      /* 允許自然滾動以觸發 Safari 網址列自動隱藏 */
-      overflow-y: auto;
-      -webkit-overflow-scrolling: touch;
-      padding-top: env(safe-area-inset-top);
-      padding-bottom: env(safe-area-inset-bottom);
-    }
-
-    /* 頂部工具列：點擊切換顯示/隱藏 */
+    /* 頂部工具列 */
     .toolbar {
       position: fixed;
       top: 0;
@@ -59,7 +56,6 @@
       will-change: transform;
     }
 
-    /* 隱藏狀態 */
     .toolbar.hidden {
       transform: translateY(-100%);
     }
@@ -79,7 +75,6 @@
       opacity: 0.6;
     }
 
-    /* 閱讀進度按鈕樣式 */
     .progress-btn {
       background-color: #2a2a2a;
       color: #4CAF50;
@@ -91,10 +86,19 @@
       display: none;
     }
 
-    /* 文章內容區塊：左右邊距完全拉到最盡 (padding 0) */
+    /* 全螢幕獨立滾動容器 */
+    .scroll-wrapper {
+      width: 100%;
+      height: 100%;
+      overflow-y: auto;
+      -webkit-overflow-scrolling: touch;
+      padding-top: calc(env(safe-area-inset-top) + 80px);
+      padding-bottom: calc(env(safe-area-inset-bottom) + 60px);
+    }
+
     .content-container {
       width: 100%;
-      padding: calc(env(safe-area-inset-top) + 80px) 0 calc(env(safe-area-inset-bottom) + 50px) 0;
+      padding: 0;
       font-size: var(--font-size);
       line-height: var(--line-height);
       word-break: break-word;
@@ -110,7 +114,6 @@
 </head>
 <body>
 
-  <!-- 固定/點擊切換隱藏控制工具列 -->
   <div class="toolbar" id="toolbar">
     <label class="btn" for="fileInput">📁 開啟檔案</label>
     <input type="file" id="fileInput" accept=".txt,.html,.md,.text">
@@ -121,20 +124,20 @@
     <button class="btn" id="lineIncBtn">行距 +</button>
     <button class="btn" id="lineDecBtn">行距 -</button>
 
-    <!-- 進度與快轉按鈕 -->
     <button class="btn progress-btn" id="progressBtn" title="點擊輸入進度">0.00%</button>
 
     <span class="loading-status" id="statusText"></span>
   </div>
 
-  <!-- 文章閱讀區域 -->
-  <div class="content-container" id="textContent">
-    請點擊上方「開啟檔案」載入文章...
+  <div class="scroll-wrapper" id="scrollWrapper">
+    <div class="content-container" id="textContent">
+      請點擊上方「開啟檔案」載入文章...
+    </div>
   </div>
 
   <script>
-    // 完整簡繁字體映射對照字串
-    const s2tPairs = "万萬与與丑醜专專业業丛叢东東丝絲丢丟两兩严嚴丧喪个個丫丫中中丰豐临臨丽麗举舉么麼义義乌烏乐樂乔喬习習乡鄉书書买買乱亂争爭于於亏虧云雲亚亞产產亩畝亲親亿億什什仆僕仇仇从從仑侖仓倉仪儀们們价價众衆优優伙夥会會伟偉传傳伤傷伦倫伪僞伫佇体體余餘佛佛佣傭佩佩佬佬佯佯佰佰佳佳併併使使来來例例侍侍供供依依侠俠侣侶侥僥侦偵侧側侨僑侩儈侬儂保保侠俠信信修修俯俯俱俱俸俸俺俺倍倍倒倒倡倡倦倦倩倩倪倪债債值值倾傾假假做做停停健健偶偶偷偷偿償傀傀傅傅傍傍杰傑僧僧僵僵价價僻僻侬儂亿億俩倆俪儷俨儼关關兴興具具典典养養兼兼兽獸内內册冊再再写寫军軍农農冠冠冰冰冲沖冷冷准準凛凜凝凝几幾凡凡凤鳳凭憑凯凱出出击擊函函凿鑿分分划劃刘劉则則刚剛创創删刪判判别別劫劫利利刮刮到到制制刷刷刹刹刺刺刻刻刽劊剁剁剂劑剃剃削削前前剐剮剑劍剥剝剧劇剩剩剪剪副副割割力力办辦劝勸功功加加务務动動助助努努劫劫励勵劲勁劳勞势勢勃勃勇勇勋勳勒勒勘勘募募勤勤勺勺勾勾匀勻包包匆匆化化北北匙匙匹匹区區医醫十十千千升升午午半半华華协協单單卖賣南南博博卜卜占占卡卡卢盧卤鹵卧臥卫衛印印危危即即却卻卵卵卷卷卸卸厂廠历歷厉厲压壓厌厭厕廁厘釐厚厚原原厢廂厦廈厨廚去去县縣叁參又又叉叉及及友友双雙反反发發叔叔取取受受变變叙敘叛叛叠疊口口古古句句另另叮叮可可台臺史史右右叶葉号號司司叹嘆吃吃各各合合吉吉吊吊同同名名后後吏吏吐吐向向吓嚇吕呂吗嗎吞吞吟吟吠吠吐吐负負吝吝乐樂听聽启啓吱吱吴吳吵吵呐吶吸吸吹吹吻吻吼吼吾吾呀呀吕呂呆呆呈呈告告呐吶员員呜嗚呢呢呤呤呦呦周周周周查查堠堠呼呼命命咀咀咆咆咤咤唧唧唾唾唯唯唱唱唳唳唵唵唷唷念念噀噀唾唾啃啃啄啄商商啊啊啐啐啕啕唾唾唤喚喜喜喝喝嗏嗏喧喧喷噴喻喻噪噪噬噬嗷嗷嗽嗽嗾嗾嘀嘀叹嘆嘈嘈嘉嘉嘌嘌嗷嗷嘴嘴嚅嚅吓嚇嚎嚎嚏嚏嚌嚌嚓嚓嚣囂嚚嚚囀囀嚼嚼囊囊囔囔囗囗囚囚四四回回因因团團囤囤园園困困围圍囵綸图圖国國囹囹圆圓圈圈圉圉圞圞土土圣聖在地在在圩圩圬圬圭圭圮圮圯圯地地圳圳圹圹场場圾圾坂坂均均坊坊坎坎坏壞坐坐坑坑块塊坚堅坛壇坜壢坝壩坞塢坟墳坠墜坡坡坤坤坦坦坨坨坪坪坫坫坭坭坯坯坼坼垂垂垃垃垄壟垆垆型型垌垌垒壘垓垓垴垴垵垵城城埏埏埔埔埕埕埙塤埚堝埕埕域域埠埠埤埤埯埯埴埴埘埘埝埝埞埞培培基基埯埯埰埰堂堂堆堆堑塹堕墮堙堙堞堞堠堠堡堡堤堤堪堪堰堰堲堲报報场場堵堵墁塌塌墕墕墖墖墛墛墀墀墓墓墙牆墚墚增增墟墟墨墨墩墩墼墼壁壁壅壅壑壑压壓壕壕壎塤壙壙壜壜壝壝壢壢士士壬壬壮壯声聲壳殼壶壺壹壹处處备備复複夏夏夕夕外外多多夜夜够夠夥夥大大天天天太大人人人夫夫夭夭央央夯夯失失头頭夷夷夸誇夹夾夺奪奄奄奇奇奈奈奉奉奋奮奎奎奏奏契契奔奔奖獎套套奥奧女女奴奴奶奶奸奸她她好好如如妃妃妄妄妇婦妈妈壬壬妒妒妓妓妖妖妙妙妥妥妨妨妩嫵妮妮娈娈姊姊始始姐姐姑姑姓姓委委姿姿威威娃娃娄婁娅婭娆嬀娇嬌娈娈娘娘娜娜娟娟娠娠娣娣娥娥娱娛娲媧娴嫻婵嬋婷婷婞婞媞媞媚媚媛媛媪媼媬媬媸媸媲媲媳媳媵媵媼媼妈媽嫗嫗嫚嫚嫡嫡嫦嫦嫩嫩嫫嫫嫱嬙嬀嬀嬖嬖嬝嬝嬢嬢嬷嬤孀孀子子孔孔孕孕字字存存孙孫孚孚孛孛孜孜孝孝孟孟孢孢季季孤孤孥孥学學孩孩孪攣孰孰孱孱孳孳孿攣它它它它宅宅宇宇守守安安宋宋完完宏宏宓宓宕宕宗宗官官宙宙定定宛宛宜宜宝寶实實宠寵审審客客宣宣室室宪憲宫宮宰宰害害宴宴宵宵家家宸宸容容宽寬宾賓宿宿寂寂寄寄寅寅密密寇寇富富寐寐寒寒寓寓寓寓寘寘寖寖寝寢寞寞察察寡寡寝寢寤寤寥寥实實宁寧寨寨审審写寫寮寮寰寰寸寸对對寺寺寻尋导導寿壽封封射射将將專專尉尉尊尊小心心少少尔爾尖尖尘塵尚尚尨尨尤尤就就尴尬尷尬尸屍尹尹尺尺尼尼尽盡尾尾局局屁屁层層居居屈屈屉屜届屆屋屋屎屎屏屏屏屏屑屑展展屦履属屬山山岁歲岂豈岗崗岘峴岚嵐岛島岭嶺岳嶽岷岷峄嶧峣嶢峤嶠峦巒崖崖峥崢崟崟崨崨崮崮崾崾嵆嵆嵎嵎嵋嵋嵌嵌嵘嶸嵚嶔嵞嵞嵨嵨嵲嵲嶀嶀嶁嶁嶓嶓嶔嶔嶝嶝嶢嶢嶬嶬嶮嶮嶸嶸嶹嶹巃巃巇巇巎巎巑巑峦巒巛巛川川州州巡巡巢巢工工左左巧巧巨巨巫巫差差己己已已巳巳巴巴巷巷巽巽巾巾币幣市市布布帅帥师師希希帐帳帑帑帕帕帖帖帖帖帛帛帜幟帝帝带帶帧幀师師席席帮幫帱疇帷帷常常帲帲帽帽幂冪幄幄幅幅幌幌幔幔幕幕幗幗幡幡幢幢币幣帮幫干乾平平年年并並幸幸广廣庄莊庆慶庇庇床床庑廡库庫应應底底店店庙廟庚庚府府庞龐废廢度度座座庭庭庵庵庶庶康康庸庸廉廉廊廊廄廄廄廄廕廕廖廖广廣延延廷廷建建开開异異弃棄弄弄弈弈弊弊弋弋式式弑弒弓弓引引弗弗弘弘弛弛弟弟张張弥彌弦弦弯彎弱弱弹彈强強归歸当當录錄彗彗彝彝形形彦彥彩彩彪彪彬彬彭彭彰彰影影彳彳彷彷役役彻徹彼彼往往征征径徑待待旬旬很很徊徊律律後後徐徐徒徒徕徠得得徘徘徙徙徜徜御御徨徨循循待待微微徵徵德德徼徼心心必必忆憶忌忌忍忍忏懺忐忐忑忑忒忒忖忖志志忘忘忙忙忠忠忡忡忤忤忧憂忪忪快快体體";
+    // 精準擴充版簡繁映射對照表 (基於 OpenCC 常用字庫整理)
+    const s2tPairs = "万萬与與丑醜专專业業丛叢东東丝絲丢丟两兩严嚴丧喪个個丫丫中中丰豐临臨丽麗举舉么麼义義乌烏乐樂乔喬习習乡鄉书書买買乱亂争爭于於亏虧云雲亚亞产產亩畝亲親亿億什什仆僕仇仇从從仑侖仓倉仪儀们們价價众衆优優伙夥会會伟偉传傳伤傷伦倫伪僞伫佇体體余餘佛佛佣傭佩佩佬佬佯佯佰佰佳佳併併使使来來例例侍侍供供依依侠俠侣侶侥僥侦偵侧側侨僑侩儈侬儂保保侠俠信信修修俯俯俱俱俸俸俺俺倍倍倒倒倡倡倦倦倩倩倪倪债債值值倾傾假假做做停停健健偶偶偷偷偿償傀傀傅傅傍傍杰傑僧僧僵僵价價僻僻侬儂亿億俩倆俪儷俨儼关關兴興具具典典养養兼兼兽獸内內册冊再再写寫军軍农農冠冠冰冰冲沖冷冷准準凛凜凝凝几幾凡凡凤鳳凭憑凯凱出出击擊函函凿鑿分分划劃刘劉则則刚剛创創删刪判判别別劫劫利利刮刮到到制制刷刷刹刹刺刺刻刻刽劊剁剁剂劑剃剃削削前前剐剮剑劍剥剝剧劇剩剩剪剪副副割割力力办辦劝勸功功加加务務动動助助努努劫劫励勵劲勁劳勞势勢勃勃勇勇勋勳勒勒勘勘募募勤勤勺勺勾勾匀勻包包匆匆化化北北匙匙匹匹区區医醫十十千千升升午 Colonial華协協单單卖賣南南博博卜卜占占卡卡卢盧卤鹵卧臥卫衛印印危危即即却卻卵卵卷卷卸卸厂廠历歷厉厲压壓厌厭厕廁厘釐厚厚原原厢廂厦廈厨廚去去县縣叁參又又叉叉及及友友双雙反反发發叔叔取取受受变變叙敘叛叛叠疊口口古古句句另另叮叮可可台臺史史右右叶葉号號司司叹嘆吃吃各各合合吉吉吊吊同同名名后後吏吏吐吐向向吓嚇吕呂吗嗎吞吞吟吟吠吠吐吐负負吝吝乐樂听聽启啓吱吱吴吳吵吵呐吶吸吸吹吹吻吻吼吼吾吾呀呀吕呂呆呆呈呈告告呐吶员員呜嗚呢呢呤呤呦呦周周周周查查堠堠呼呼命命咀咀咆咆咤咤唧唧唾唾唯唯唱唱唳唳唵唵唷唷念念噀噀唾唾啃啃啄啄商商啊啊啐啐啕啕唾唾唤喚喜喜喝喝嗏嗏喧喧喷噴喻喻噪噪噬噬嗷嗷嗽嗽嗾嗾嘀嘀叹嘆嘈嘈嘉嘉嘌嘌嗷嗷嘴嘴嚅嚅吓嚇嚎嚎嚏嚏嚌嚌嚓嚓嚣囂嚚嚚囀囀嚼嚼囊囊囔囔囗囗囚囚四四回回因因团團囤囤园園困困围圍囵綸图圖国國囹囹圆圓圈圈圉圉圞圞土土圣聖在地在在圩圩圬圬圭圭圮圮圯圯地地圳圳圹圹场場圾圾坂坂均均坊坊坎坎坏壞坐坐坑坑块塊坚堅坛壇坜壢坝壩坞塢坟墳坠墜坡坡坤坤坦坦坨坨坪坪坫坫坭坭坯坯坼坼垂垂垃垃垄壟垆垆型型垌垌垒壘垓垓垴垴垵垵城城埏埏埔埔埕埕埙塤埚堝埕埕域域埠埠埤埤埯埯埴埴埘埘埝埝埞埞培培基基埯埯埰埰堂堂堆堆堑塹堕墮堙堙堞堞堠堠堡堡堤堤堪堪堰堰堲堲报報场場堵堵墁塌塌墕墕墖墖墛墛墀墀墓墓墙牆墚墚增增墟墟墨墨墩墩墼墼壁壁壅壅壑壑压壓壕壕壎塤壙壙壜壜壝壝壢壢士士壬壬壮壯声聲壳殼壶壺壹壹处處备備复複夏夏夕夕外外多多夜夜够夠夥夥大大天天天太大人人人夫夫夭夭央央夯夯失失头頭夷夷夸誇夹夾夺奪奄奄奇奇奈奈奉奉奋奮奎奎奏奏契契奔奔奖獎套套奥奧女女奴奴奶奶奸奸她她好好如如妃妃妄妄妇婦妈妈壬壬妒妒妓妓妖妖妙妙妥妥妨妨妩嫵妮妮诞誕姊姊始始姐姐姑姑姓姓委委姿姿威威娃娃娄婁娅婭娆嬀娇嬌娈娈娘娘娜娜娟娟娠娠娣娣娥娥娱娛娲媧娴嫻婵嬋婷婷婞婞媞媞媚媚媛媛媪媼媬媬媸媸媲媲媳媳媵媵媼媼妈媽嫗嫗嫚嫚嫡嫡嫦嫦嫩嫩嫫嫫嫱嬙嬀嬀嬖嬖嬝嬝嬢嬢嬷嬤孀孀子子孔孔孕孕字字存存孙孫孚孚孛孛孜孜孝孝孟孟孢孢季季孤孤孥孥学學孩孩孪攣孰孰孱孱孳孳孿攣它它宅宅宇宇守守安安宋宋完完宏宏宓宓宕宕宗宗官官宙宙定定宛宛宜宜宝寶实實宠寵审審客客宣宣室室宪憲宫宮宰宰害害宴宴宵宵家家宸宸容容宽寬宾賓宿宿寂寂寄寄寅寅密密寇寇富富寐寐寒寒寓寓寘寘寖寖寝寢寞寞察察寡寡寝寢寤寤寥寥实實宁寧寨寨审審写寫寮寮寰寰寸寸对對寺寺寻尋导導寿壽封封射射将將專專尉尉尊尊小心心少少尔爾尖尖尘塵尚尚尨尨尤尤就就尴尬尷尬尸屍尹尹尺尺尼尼尽盡尾尾局局屁屁层層居居屈屈屉屜届屆屋屋屎屎屏屏屑屑展展屦履属屬山山岁歲岂豈岗崗岘峴岚嵐岛島岭嶺岳嶽岷岷峄嶧峣嶢峤嶠峦巒崖崖峥崢崟崟崨崨崮崮崾崾嵆嵆嵎嵎嵋嵋嵌嵌嵘嶸嵚嶔嵞嵞嵨嵨嵲嵲嶀嶀嶁嶁嶓嶓嶔嶔嶝嶝嶢嶢嶬嶬嶮嶮嶸嶸嶹嶹巃巃巇巇巎巎巑巑峦巒巛巛川川州州巡巡巢巢工工左左巧巧巨巨巫巫差差己己已已巳巳巴巴巷巷巽巽巾巾币幣市市布布帅帥师師希希帐帳帑帑帕帕帖帖帛帛帜幟帝帝带帶帧幀师師席席帮幫帱疇帷帷常常帲帲帽帽幂冪幄幄幅幅幌幌幔幔幕幕帽帽幡幡幢幢币幣帮幫干乾平平年年并並幸幸广廣庄莊庆慶庇庇床床庑廡库庫应應底底店店庙廟庚庚府府庞龐废廢度度座座庭庭庵庵庶庶康康庸庸廉廉廊廊廄廄廕廕廖廖广廣延延廷廷建建开開异異弃棄弄弄弈弈弊弊弋弋式式弑弒弓弓引引弗弗弘弘弛弛弟弟张張弥彌弦弦弯彎弱弱弹彈强強归歸当當录錄彗彗彝彝形形彦彥彩彩彪彪彬彬彭彭彰彰影影彳彳彷彷役役彻徹彼彼往往征征径徑待待旬旬很很徊徊律律後後徐徐徒徒徕徠得得徘徘徙徙徜徜御御徨徨循循待待微微徵徵德德徼徼心心必必忆憶忌忌忍忍忏懺忐忐忑忑忒忒忖忖志志忘忘忙忙忠忠忡忡忤忤忧憂忪忪快快体體";
 
     const dict = {};
     for (let i = 0; i < s2tPairs.length; i += 2) {
@@ -146,6 +149,7 @@
     }
 
     const toolbar = document.getElementById('toolbar');
+    const scrollWrapper = document.getElementById('scrollWrapper');
     const textContent = document.getElementById('textContent');
     const fileInput = document.getElementById('fileInput');
     const fontIncBtn = document.getElementById('fontIncBtn');
@@ -163,8 +167,8 @@
 
     // 2. 閱讀進度計算與顯示
     function updateProgress() {
-      const scrollTop = window.pageYOffset || document.documentElement.scrollTop || document.body.scrollTop || 0;
-      const scrollHeight = document.documentElement.scrollHeight - document.documentElement.clientHeight;
+      const scrollTop = scrollWrapper.scrollTop;
+      const scrollHeight = scrollWrapper.scrollHeight - scrollWrapper.clientHeight;
       
       if (scrollHeight <= 0) {
         progressBtn.textContent = '0.00%';
@@ -175,26 +179,24 @@
       progressBtn.textContent = `${percent.toFixed(2)}%`;
     }
 
-    window.addEventListener('scroll', updateProgress, { passive: true });
+    scrollWrapper.addEventListener('scroll', updateProgress, { passive: true });
 
-    // 3. 點擊進度按鈕輸入 % 數快轉（支援多餘字元修復與容錯）
+    // 3. 點擊進度按鈕輸入 % 數快轉
     progressBtn.addEventListener('click', (e) => {
       e.stopPropagation();
       const currentVal = parseFloat(progressBtn.textContent) || 0;
       const input = prompt('請輸入要跳轉的進度百分比 (0 - 100):', currentVal.toFixed(2));
       
       if (input !== null) {
-        // 使用正則表達式擷取第一個合法的浮點數字（可處理包含 /、% 或空格的輸入）
         const match = input.match(/[-+]?[0-9]*\.?[0-9]+/);
         if (match) {
           const targetPercent = parseFloat(match[0]);
           if (!isNaN(targetPercent)) {
-            // 自動限制範圍在 0 至 100 之間
             const clampedPercent = Math.min(100, Math.max(0, targetPercent));
-            const scrollHeight = document.documentElement.scrollHeight - document.documentElement.clientHeight;
+            const scrollHeight = scrollWrapper.scrollHeight - scrollWrapper.clientHeight;
             const targetY = (clampedPercent / 100) * scrollHeight;
             
-            window.scrollTo({ top: targetY, behavior: 'smooth' });
+            scrollWrapper.scrollTo({ top: targetY, behavior: 'smooth' });
           }
         }
       }
@@ -240,7 +242,7 @@
         }
 
         statusText.textContent = '';
-        window.scrollTo({ top: 0, behavior: 'smooth' });
+        scrollWrapper.scrollTo({ top: 0, behavior: 'smooth' });
         toolbar.classList.remove('hidden');
         updateProgress();
       } catch (err) {
@@ -249,8 +251,8 @@
       }
     });
 
-    // 5. 字體與行距調整（預設：字體 24px，行距 1.2）
-    let currentFontSize = 24;
+    // 5. 字體與行距調整（預設：字體 28px，行距 1.3）
+    let currentFontSize = 28;
     fontIncBtn.addEventListener('click', (e) => {
       e.stopPropagation();
       currentFontSize += 1;
@@ -265,7 +267,7 @@
       }
     });
 
-    let currentLineHeight = 1.2;
+    let currentLineHeight = 1.3;
     lineIncBtn.addEventListener('click', (e) => {
       e.stopPropagation();
       currentLineHeight = parseFloat((currentLineHeight + 0.1).toFixed(1));
