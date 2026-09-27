@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <meta name="apple-mobile-web-app-capable" content="yes">
-  <!-- 改為不透明純黑狀態列 -->
+  <!-- 不透明純黑狀態列 -->
   <meta name="apple-mobile-web-app-status-bar-style" content="black">
   
   <!-- 強制瀏覽器與 iOS Web App 抓取最新版本，不使用舊快取 -->
@@ -19,9 +19,9 @@
 
   <style>
     :root {
-      --bg-color: #000000;      /* 改為純黑 */
+      --bg-color: #000000;      /* 純黑背景 */
       --text-color: #e0e0e0;
-      --panel-bg: #000000;     /* 工具列改為純黑不透明 */
+      --panel-bg: #000000;     /* 工具列純黑不透明 */
       --border-color: #222222;
       --font-size: 26px;
       --line-height: 1.4;
@@ -147,6 +147,136 @@
       color: #aaa;
       flex-shrink: 0;
     }
+
+    /* 本地數據庫彈窗 */
+    .modal-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background-color: rgba(0, 0, 0, 0.85);
+      z-index: 200;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      padding: 20px;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.2s ease;
+    }
+
+    .modal-overlay.active {
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    .modal-content {
+      background-color: #000000;
+      border: 1px solid #333333;
+      border-radius: 12px;
+      width: 100%;
+      max-width: 500px;
+      max-height: 80vh;
+      display: flex;
+      flex-direction: column;
+      padding: 16px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.8);
+    }
+
+    .modal-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding-bottom: 12px;
+      border-bottom: 1px solid #222222;
+      margin-bottom: 12px;
+    }
+
+    .modal-title {
+      font-size: 16px;
+      font-weight: bold;
+      color: #ffffff;
+    }
+
+    .modal-close {
+      background: none;
+      border: none;
+      color: #888;
+      font-size: 18px;
+      cursor: pointer;
+      padding: 0 8px;
+    }
+
+    .book-list {
+      overflow-y: auto;
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .book-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 10px 12px;
+      background-color: #111111;
+      border: 1px solid #222222;
+      border-radius: 8px;
+      cursor: pointer;
+    }
+
+    .book-item:active {
+      background-color: #222222;
+    }
+
+    .book-info {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      overflow: hidden;
+    }
+
+    .book-name {
+      font-size: 14px;
+      color: #e0e0e0;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .book-meta {
+      font-size: 11px;
+      color: #777777;
+    }
+
+    .book-actions {
+      display: flex;
+      gap: 8px;
+      flex-shrink: 0;
+    }
+
+    .btn-delete {
+      background-color: transparent;
+      color: #ff5252;
+      border: 1px solid #441111;
+      padding: 4px 8px;
+      border-radius: 4px;
+      font-size: 12px;
+      cursor: pointer;
+    }
+
+    .btn-delete:active {
+      background-color: #441111;
+    }
+
+    .empty-tip {
+      text-align: center;
+      color: #666;
+      font-size: 13px;
+      padding: 20px 0;
+    }
   </style>
 </head>
 <body>
@@ -154,6 +284,9 @@
   <div class="toolbar" id="toolbar">
     <label class="btn" for="fileInput">📁 開啟檔案</label>
     <input type="file" id="fileInput" accept=".txt,.html,.md,.text">
+
+    <!-- 新增資料庫按鈕 -->
+    <button class="btn" id="dbBtn">📚 資料庫</button>
 
     <button class="btn progress-btn" id="progressBtn">0.00%</button>
 
@@ -165,11 +298,102 @@
   </div>
 
   <div class="content-container" id="textContent">
-    請點擊上方「開啟檔案」載入文章...
+    請點擊上方「開啟檔案」載入文章，或點擊「資料庫」選擇已儲存書籍...
+  </div>
+
+  <!-- 本地資料庫彈窗 -->
+  <div class="modal-overlay" id="dbModal">
+    <div class="modal-content" id="modalContent">
+      <div class="modal-header">
+        <span class="modal-title">📚 本地數據庫（已存書籍）</span>
+        <button class="modal-close" id="closeModalBtn">✕</button>
+      </div>
+      <div class="book-list" id="bookList">
+        <!-- 書籍列表將由 JS 動態生成 -->
+      </div>
+    </div>
   </div>
 
   <script>
-    // 初始化 OpenCC 繁簡轉換
+    // --- IndexedDB 本地數據庫模組 ---
+    const DB_NAME = 'ReaderDB';
+    const STORE_NAME = 'books';
+
+    function openDB() {
+      return new Promise((resolve, reject) => {
+        const request = indexedDB.open(DB_NAME, 1);
+        request.onupgradeneeded = (e) => {
+          const db = e.target.result;
+          if (!db.objectStoreNames.contains(STORE_NAME)) {
+            db.createObjectStore(STORE_NAME, { keyPath: 'key' });
+          }
+        };
+        request.onsuccess = () => resolve(request.result);
+        request.onerror = () => reject(request.error);
+      });
+    }
+
+    async function saveBookToDB(fileKey, title, content) {
+      try {
+        const db = await openDB();
+        const tx = db.transaction(STORE_NAME, 'readwrite');
+        const store = tx.objectStore(STORE_NAME);
+        store.put({ 
+          key: fileKey, 
+          title: title, 
+          content: content, 
+          updatedAt: new Date().getTime() 
+        });
+      } catch (err) {
+        console.error('IndexedDB 儲存失敗:', err);
+      }
+    }
+
+    async function getAllBooksFromDB() {
+      try {
+        const db = await openDB();
+        const tx = db.transaction(STORE_NAME, 'readonly');
+        const store = tx.objectStore(STORE_NAME);
+        return new Promise((resolve) => {
+          const req = store.getAll();
+          req.onsuccess = () => resolve(req.result || []);
+          req.onerror = () => resolve([]);
+        });
+      } catch (err) {
+        console.error('IndexedDB 讀取失敗:', err);
+        return [];
+      }
+    }
+
+    async function getBookFromDB(fileKey) {
+      try {
+        const db = await openDB();
+        const tx = db.transaction(STORE_NAME, 'readonly');
+        const store = tx.objectStore(STORE_NAME);
+        return new Promise((resolve) => {
+          const req = store.get(fileKey);
+          req.onsuccess = () => resolve(req.result || null);
+          req.onerror = () => resolve(null);
+        });
+      } catch (err) {
+        console.error('IndexedDB 讀取單本失敗:', err);
+        return null;
+      }
+    }
+
+    async function deleteBookFromDB(fileKey) {
+      try {
+        const db = await openDB();
+        const tx = db.transaction(STORE_NAME, 'readwrite');
+        const store = tx.objectStore(STORE_NAME);
+        store.delete(fileKey);
+        localStorage.removeItem(`reader_pos_${fileKey}`);
+      } catch (err) {
+        console.error('IndexedDB 刪除失敗:', err);
+      }
+    }
+
+    // --- 初始化 OpenCC 繁簡轉換 ---
     const converter = window.OpenCC ? window.OpenCC.Converter({ from: 'cn', to: 'hk' }) : text => text;
 
     // 將各類引號轉為標準繁體中文標點「」與『』
@@ -190,12 +414,18 @@
     const progressSlider = document.getElementById('progressSlider');
     const statusText = document.getElementById('statusText');
 
-    let isUserDraggingSlider = false;
-    let currentFileKey = null; // 用於識別當前檔案進度的 Key
+    const dbBtn = document.getElementById('dbBtn');
+    const dbModal = document.getElementById('dbModal');
+    const closeModalBtn = document.getElementById('closeModalBtn');
+    const bookList = document.getElementById('bookList');
+    const modalContent = document.getElementById('modalContent');
 
-    // 1. 點擊空白處隱藏/顯示選單
+    let isUserDraggingSlider = false;
+    let currentFileKey = null;
+
+    // 1. 點擊空白處隱藏/顯示選單（排除彈窗區塊）
     document.addEventListener('click', (e) => {
-      if (toolbar.contains(e.target)) return;
+      if (toolbar.contains(e.target) || dbModal.contains(e.target)) return;
       toolbar.classList.toggle('hidden');
     });
 
@@ -204,21 +434,22 @@
       if (!currentFileKey) return;
       try {
         localStorage.setItem(`reader_pos_${currentFileKey}`, scrollTop);
+        localStorage.setItem(`last_opened_key`, currentFileKey);
       } catch (e) {
         console.error('儲存進度失敗:', e);
       }
     }
 
-    function getSavedProgress() {
-      if (!currentFileKey) return 0;
-      return parseFloat(localStorage.getItem(`reader_pos_${currentFileKey}`)) || 0;
+    function getSavedProgress(key) {
+      const targetKey = key || currentFileKey;
+      if (!targetKey) return 0;
+      return parseFloat(localStorage.getItem(`reader_pos_${targetKey}`)) || 0;
     }
 
     // 3. 頁面滾動時更新 UI 與儲存進度
     function updateProgressUI() {
       const scrollTop = window.pageYOffset || document.documentElement.scrollTop || 0;
       
-      // 當載入檔案後，將目前滾動位置寫入 localStorage
       if (currentFileKey) {
         saveProgress(scrollTop);
       }
@@ -280,12 +511,32 @@
       }
     });
 
-    // 6. 檔案載入、轉碼、引號處理與自動恢復進度
+    // 6. 渲染內文並恢復進度
+    function loadBookText(fileKey, text) {
+      currentFileKey = fileKey;
+      textContent.innerText = text;
+      
+      const savedY = getSavedProgress(fileKey);
+      if (savedY > 0) {
+        statusText.textContent = '已恢復閱讀進度';
+        setTimeout(() => { statusText.textContent = ''; }, 2000);
+        
+        requestAnimationFrame(() => {
+          window.scrollTo(0, savedY);
+          updateProgressUI();
+        });
+      } else {
+        statusText.textContent = '';
+        window.scrollTo(0, 0);
+        updateProgressUI();
+      }
+    }
+
+    // 7. 檔案載入、轉碼、引號處理，並自動存入資料庫
     fileInput.addEventListener('change', async (e) => {
       const file = e.target.files[0];
       if (!file) return;
 
-      // 生成此檔案特有的 Key（結合檔名與檔案大小）
       currentFileKey = `${file.name}_${file.size}`;
 
       statusText.textContent = '載入中...';
@@ -306,43 +557,133 @@
         const decoder = new TextDecoder(encoding);
         const chunkSize = 100000;
         let offset = 0;
-        const fragment = document.createDocumentFragment();
+        let fullText = '';
 
         while (offset < uint8Array.length) {
           const chunk = uint8Array.subarray(offset, offset + chunkSize);
           const isFinal = offset + chunkSize >= uint8Array.length;
           const textChunk = decoder.decode(chunk, { stream: !isFinal });
 
-          const convertedChunk = formatQuotes(converter(textChunk));
-          fragment.appendChild(document.createTextNode(convertedChunk));
-
+          fullText += formatQuotes(converter(textChunk));
           offset += chunkSize;
           statusText.textContent = `${Math.min(100, Math.round((offset / uint8Array.length) * 100))}%`;
           await new Promise(r => setTimeout(r, 0));
         }
 
-        textContent.appendChild(fragment);
-        toolbar.classList.remove('hidden');
+        // 自動寫入本地 IndexedDB 數據庫
+        statusText.textContent = '儲存至本地資料庫...';
+        await saveBookToDB(currentFileKey, file.name, fullText);
 
-        // 讀取上次儲存的進度並恢復
-        const savedY = getSavedProgress();
-        if (savedY > 0) {
-          statusText.textContent = '已恢復閱讀進度';
-          setTimeout(() => { statusText.textContent = ''; }, 2000);
-          
-          requestAnimationFrame(() => {
-            window.scrollTo(0, savedY);
-            updateProgressUI();
-          });
-        } else {
-          statusText.textContent = '';
-          window.scrollTo(0, 0);
-          updateProgressUI();
-        }
+        loadBookText(currentFileKey, fullText);
+        toolbar.classList.remove('hidden');
 
       } catch (err) {
         console.error(err);
         statusText.textContent = '載入失敗';
+      }
+    });
+
+    // 8. 資料庫彈窗 UI 控制與動態列表渲染
+    async function renderBookList() {
+      const books = await getAllBooksFromDB();
+      bookList.innerHTML = '';
+
+      if (books.length === 0) {
+        bookList.innerHTML = '<div class="empty-tip">本地數據庫暫無已存書籍<br>請點擊「開啟檔案」載入書籍</div>';
+        return;
+      }
+
+      // 按最後更新時間倒序排列
+      books.sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0));
+
+      books.forEach(book => {
+        const item = document.createElement('div');
+        item.className = 'book-item';
+        
+        const info = document.createElement('div');
+        info.className = 'book-info';
+        
+        const title = document.createElement('div');
+        title.className = 'book-name';
+        title.textContent = book.title;
+
+        const meta = document.createElement('div');
+        meta.className = 'book-meta';
+        const savedY = getSavedProgress(book.key);
+        meta.textContent = savedY > 0 ? '已讀部分位置' : '未讀 / 起始位置';
+
+        info.appendChild(title);
+        info.appendChild(meta);
+
+        const actions = document.createElement('div');
+        actions.className = 'book-actions';
+
+        const delBtn = document.createElement('button');
+        delBtn.className = 'btn-delete';
+        delBtn.textContent = '刪除';
+        delBtn.onclick = async (e) => {
+          e.stopPropagation();
+          if (confirm(`確定要從本地數據庫刪除《${book.title}》嗎？`)) {
+            await deleteBookFromDB(book.key);
+            if (currentFileKey === book.key) {
+              currentFileKey = null;
+              textContent.innerText = '請點擊上方「開啟檔案」載入文章，或點擊「資料庫」選擇已儲存書籍...';
+            }
+            renderBookList();
+          }
+        };
+
+        actions.appendChild(delBtn);
+
+        item.appendChild(info);
+        item.appendChild(actions);
+
+        // 點擊整列切換閱讀該書籍
+        item.onclick = async () => {
+          dbModal.classList.remove('active');
+          statusText.textContent = '載入書籍中...';
+          const bookData = await getBookFromDB(book.key);
+          if (bookData && bookData.content) {
+            loadBookText(book.key, bookData.content);
+          } else {
+            statusText.textContent = '讀取書籍失敗';
+          }
+        };
+
+        bookList.appendChild(item);
+      });
+    }
+
+    dbBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      renderBookList();
+      dbModal.classList.add('active');
+    });
+
+    closeModalBtn.addEventListener('click', () => {
+      dbModal.classList.remove('active');
+    });
+
+    dbModal.addEventListener('click', (e) => {
+      if (!modalContent.contains(e.target)) {
+        dbModal.classList.remove('active');
+      }
+    });
+
+    // 9. App 啟動時自動恢復上次閱讀的書籍
+    window.addEventListener('DOMContentLoaded', async () => {
+      const lastKey = localStorage.getItem('last_opened_key');
+      if (lastKey) {
+        const bookData = await getBookFromDB(lastKey);
+        if (bookData && bookData.content) {
+          loadBookText(lastKey, bookData.content);
+          return;
+        }
+      }
+      // 若沒有上次記錄，嘗試開啟數據庫第一本
+      const books = await getAllBooksFromDB();
+      if (books.length > 0) {
+        loadBookText(books[0].key, books[0].content);
       }
     });
   </script>
