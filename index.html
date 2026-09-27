@@ -3,12 +3,8 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-  
-  <!-- 全螢幕 Web App 設定 -->
   <meta name="apple-mobile-web-app-capable" content="yes">
-  <!-- 將狀態列設為半透明，讓內容延伸至螢幕最頂端 -->
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <meta name="apple-mobile-web-app-title" content="極簡閱讀">
   <title>極簡閱讀器</title>
   
   <!-- 高精準度 OpenCC 繁簡轉換庫 -->
@@ -32,7 +28,6 @@
 
     html {
       scroll-behavior: auto !important;
-      background-color: var(--bg-color);
     }
 
     body {
@@ -130,10 +125,10 @@
       display: none;
     }
 
-    /* 文章內容區塊：讓文字能向上延伸填滿至螢幕頂端 */
+    /* 文章內容區塊：左右邊距改為 0px 佔滿全螢幕 */
     .content-container {
       width: 100%;
-      padding: calc(env(safe-area-inset-top) + 20px) 0px calc(env(safe-area-inset-bottom) + 20px) 0px;
+      padding: calc(env(safe-area-inset-top) + 60px) 0px calc(env(safe-area-inset-bottom) + 60px) 0px;
       font-size: var(--font-size);
       line-height: var(--line-height);
       word-break: break-word;
