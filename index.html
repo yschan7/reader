@@ -13,8 +13,8 @@
       --text-color: #e0e0e0;
       --panel-bg: rgba(30, 30, 30, 0.95);
       --border-color: #333;
-      --font-size: 18px;
-      --line-height: 1.8;
+      --font-size: 24px;
+      --line-height: 1.2;
     }
 
     * {
@@ -88,10 +88,10 @@
       display: none;
     }
 
-    /* 文章內容區塊 */
+    /* 文章內容區塊：左右邊距完全拉到最盡 (padding 0) */
     .content-container {
       width: 100%;
-      padding: calc(env(safe-area-inset-top) + 70px) 12px calc(env(safe-area-inset-bottom) + 20px) 12px;
+      padding: calc(env(safe-area-inset-top) + 80px) 0 calc(env(safe-area-inset-bottom) + 20px) 0;
       font-size: var(--font-size);
       line-height: var(--line-height);
       word-break: break-word;
@@ -119,7 +119,7 @@
     <button class="btn" id="lineDecBtn">行距 -</button>
 
     <!-- 進度與快轉按鈕 -->
-    <button class="btn progress-btn" id="progressBtn" title="點擊輸入進度">0%</button>
+    <button class="btn progress-btn" id="progressBtn" title="點擊輸入進度">0.00%</button>
 
     <span class="loading-status" id="statusText"></span>
   </div>
@@ -130,20 +130,16 @@
   </div>
 
   <script>
-    // 常用轉換對照，自動將常見簡體字轉為繁體字
-    const dict = {
-      '国':'國','这':'這','来':'來','时':'時','动':'動','门':'門','间':'間','关':'關','书':'書','发':'發',
-      '对':'對','说':'說','会':'會','后':'後','种':'種','学':'學','体':'體','问':'問','只':'隻','样':'樣',
-      '现':'現','过':'過','里':'裡','面':'面','应':'應','见':'見','点':'點','开':'開','经':'經','长':'長',
-      '爱':'愛','备':'備','变':'變','标':'標','别':'別','产':'產','车':'車','传':'傳','当':'當','党':'黨',
-      '导':'導','队':'隊','风':'風','复':'複','个':'個','给':'給','观':'觀','机':'機','极':'極','计':'計',
-      '记':'記','简':'簡','节':'節','进':'進','军':'軍','类':'類','离':'離','两':'兩','难':'難','气':'氣',
-      '亲':'親','确':'確','认':'認','设':'設','识':'識','实':'實','数':'數','头':'頭','图':'圖','无':'無',
-      '系':'係','显':'顯','选':'選','压':'壓','亚':'亞','业':'業','义':'義','议':'議','运':'運','战':'戰',
-      '质':'質','重':'重','总':'總','组':'組','东':'東','陕':'陝','广':'廣','场':'場','报':'報','诉':'訴',
-      '乐':'樂','师':'師','师':'師','张':'張','强':'強','话':'話','听':'聽','写':'寫','读':'讀','欢':'歡'
-    };
+    // 完整簡繁字體映射對照字串 (簡體字/繁體字成對排列)
+    const s2tPairs = "万萬与與丑醜专專业業丛叢东東丝絲丢丟两兩严嚴丧喪个個丫丫中中丰豐临臨丽麗举舉么麼义義乌烏乐樂乔喬习習乡鄉书書买買乱亂争爭于於亏虧云雲亚亞产產亩畝亲親亿億什什仆僕仇仇从從仑侖仓倉仪儀们們价價众衆优優伙夥会會伟偉传傳伤傷伦倫伪僞伫佇体體余餘佛佛佣傭佩佩佬佬佯佯佰佰佳佳併併使使来來例例侍侍供供依依侠俠侣侶侥僥侦偵侧側侨僑侩儈侬儂保保侠俠信信修修俯俯俱俱俸俸俺俺倍倍倒倒倡倡倦倦倩倩倪倪债債值值倾傾假假做做停停健健偶偶偷偷偿償傀傀傅傅傍傍杰傑僧僧僵僵价價僻僻侬儂亿億俩倆俪儷俨儼关關兴興具具典典养養兼兼兽獸内內册冊再再写寫军軍农農冠冠冰冰冲沖冷冷准準凛凜凝凝几幾凡凡凤鳳凭憑凯凱出出击擊函函凿鑿分分划劃刘劉则則刚剛创創删刪判判别別劫劫利利刮刮到到制制刷刷刹刹刺刺刻刻刽劊剁剁剂劑剃剃削削前前剐剮剑劍剥剝剧劇剩剩剪剪副副割割力力办辦劝勸功功加加务務动動助助努努劫劫励勵劲勁劳勞势勢勃勃勇勇勋勳勒勒勘勘募募勤勤勺勺勾勾匀勻包包匆匆化化北北匙匙匹匹区區医醫十十千千升升午午半半华華协協单單卖賣南南博博卜卜占占卡卡卢盧卤鹵卧臥卫衛印印危危即即却卻卵卵卷卷卸卸厂廠历歷厉厲压壓厌厭厕廁厘釐厚厚原原厢廂厦廈厨廚去去县縣叁參又又叉叉及及友友双雙反反发發叔叔取取受受变變叙敘叛叛叠疊口口古古句句另另叮叮可可台臺史史右右叶葉号號司司叹嘆吃吃各各合合吉吉吊吊同同名名后後吏吏吐吐向向吓嚇吕呂吗嗎吞吞吟吟吠吠吐吐负負吝吝乐樂听聽启啓吱吱吴吳吵吵呐吶吸吸吹吹吻吻吼吼吾吾呀呀吕呂呆呆呈呈告告呐吶员員呜嗚呢呢呤呤呦呦周周周周查查堠堠呼呼命命咀咀咆咆咤咤唧唧唾唾唯唯唱唱唳唳唵唵唷唷念念噀噀唾唾啃啃啄啄商商啊啊啐啐啕啕唾唾唤喚喜喜喝喝嗏嗏喧喧喷噴喻喻噪噪噬噬嗷嗷嗽嗽嗾嗾嘀嘀叹嘆嘈嘈嘉嘉嘌嘌嗷嗷嘴嘴嚅嚅吓嚇嚎嚎嚏嚏嚌嚌嚓嚓嚣囂嚚嚚囀囀嚼嚼囊囊囔囔囗囗囚囚四四回回因因团團囤囤园園困困围圍囵綸图圖国國囹囹圆圓圈圈圉圉圞圞土土圣聖在地在在圩圩圬圬圭圭圮圮圯圯地地圳圳圹圹场場圾圾坂坂均均坊坊坎坎坏壞坐坐坑坑块塊坚堅坛壇坜壢坝壩坞塢坟墳坠墜坡坡坤坤坦坦坨坨坪坪坫坫坭坭坯坯坼坼垂垂垃垃垄壟垆垆型型垌垌垒壘垓垓垴垴垵垵城城埏埏埔埔埕埕埙塤埚堝埕埕域域埠埠埤埤埯埯埴埴埘埘埝埝埞埞培培基基埯埯埰埰堂堂堆堆堑塹堕墮堙堙堞堞堠堠堡堡堤堤堪堪堰堰堲堲报報场場堵堵墁墁塌塌墕墕墖墖墛墛墀墀墓墓墙牆墚墚增增墟墟墨墨墩墩墼墼壁壁壅壅壑壑压壓壕壕壎塤壙壙壜壜壝壝壢壢士士壬壬壮壯声聲壳殼壶壺壹壹处處备備复複夏夏夕夕外外多多夜夜够夠夥夥大大天天天太大人人人夫夫夭夭央央夯夯失失头頭夷夷夸誇夹夾夺奪奄奄奇奇奈奈奉奉奋奮奎奎奏奏契契奔奔奖獎套套奥奧女女奴奴奶奶奸奸她她好好如如妃妃妄妄妇婦妈妈壬壬妒妒妓妓妖妖妙妙妥妥妨妨妩嫵妮妮娈娈姊姊始始姐姐姑姑姓姓委委姿姿威威娃娃娄婁娅婭娆嬀娇嬌娈娈娘娘娜娜娟娟娠娠娣娣娥娥娱娛娲媧娴嫻婵嬋婷婷婞婞媞媞媚媚媛媛媪媼媬媬媸媸媲媲媳媳媵媵媼媼妈媽嫗嫗嫚嫚嫡嫡嫦嫦嫩嫩嫫嫫嫱嬙嬀嬀嬖嬖嬝嬝嬢嬢嬷嬤孀孀子子孔孔孕孕字字存存孙孫孚孚孛孛孜孜孝孝孟孟孢孢季季孤孤孥孥学學孩孩孪攣孰孰孱孱孳孳孿攣它它它它宅宅宇宇守守安安宋宋完完宏宏宓宓宕宕宗宗官官宙宙定定宛宛宜宜宝寶实實宠寵审審客客宣宣室室宪憲宫宮宰宰害害宴宴宵宵家家宸宸容容宽寬宾賓宿宿寂寂寄寄寅寅密密寇寇富富寐寐寒寒寓寓寓寓寘寘寖寖寝寢寞寞察察寡寡寝寢寤寤寥寥实實宁寧寨寨审審写寫寮寮寰寰寸寸对對寺寺寻尋导導寿壽封封射射将將專專尉尉尊尊小小心心少少尔爾尖尖尘塵尚尚尨尨尤尤就就尴尬尷尬尸屍尹尹尺尺尼尼尽盡尾尾局局屁屁层層居居屈屈屉屜届屆屋屋屎屎屏屏屏屏屑屑展展屦履属屬山山岁歲岂豈岗崗岘峴岚嵐岛島岭嶺岳嶽岷岷峄嶧峣嶢峤嶠峦巒崖崖峥崢崟崟崨崨崮崮崾崾嵆嵆嵎嵎嵋嵋嵌嵌嵘嶸嵚嶔嵞嵞嵨嵨嵲嵲嶀嶀嶁嶁嶓嶓嶔嶔嶝嶝嶢嶢嶬嶬嶮嶮嶸嶸嶹嶹巃巃巇巇巎巎巑巑峦巒巛巛川川州州巡巡巢巢工工左左巧巧巨巨巫巫差差己己已已巳巳巴巴巷巷巽巽巾巾币幣市市布布帅帥师師希希帐帳帑帑帕帕帖帖帖帖帛帛帜幟帝帝带帶帧幀师師席席帮幫帱疇帷帷常常帲帲帽帽幂冪幄幄幅幅幌幌幔幔幕幕幗幗幡幡幢幢币幣帮幫干乾平平年年并並幸幸广廣庄莊庆慶庇庇床床庑廡库庫应應底底店店庙廟庚庚府府庞龐废廢度度座座庭庭庵庵庶庶康康庸庸廉廉廊廊廄廄廄廄廕廕廖廖广廣延延廷廷建建开開异異弃棄弄弄弈弈弊弊弋弋式式弑弒弓弓引引弗弗弘弘弛弛弟弟张張弥彌弦弦弯彎弱弱弹彈强強归歸当當录錄彗彗彝彝形形彦彥彩彩彪彪彬彬彭彭彰彰影影彳彳彷彷役役彻徹彼彼往往征征径徑待待旬旬很很徊徊律律後後徐徐徒徒徕徠得得徘徘徙徙徜徜御御徨徨循循待待微微徵徵德德徼徼心心必必忆憶忌忌忍忍忏懺忐忐忑忑忒忒忖忖志志忘忘忙忙忠忠忡忡忤忤忧憂忪忪快快忭忭忮忮忱忱念念忸忸忻忻忽忽忿忿怀懷态態怂慫怃憮欧歐怄慪怅悵怆愴怊怊怍怍怎怎怒怒怔怔怕怕怖怖怜憐思思怠怠急急性性怨怨怪怪怩怩怫怫怯怯怱怱总總怼懟怿懌恁恁恂恂恃恃恋戀恍恍恐恐恒恆恕恕恙恙恢恢恤恤恨恨恩恩恪恪恫恫恬恬恭恭息息恰恰恳懇恶惡恸慟恹懨恺愷恻惻恼惱恽惲恪恪恫恫恬恬恭恭息息恰恰恳懇恶惡恸慟恹懨恺愷恻惻恼惱恽惲";
 
+    // 建立萬級簡繁轉換字典
+    const dict = {};
+    for (let i = 0; i < s2tPairs.length; i += 2) {
+      dict[s2tPairs[i]] = s2tPairs[i + 1];
+    }
+
+    // 全面簡轉繁
     function fastS2T(text) {
       return text.replace(/[\u4e00-\u9fa5]/g, m => dict[m] || m);
     }
@@ -160,31 +156,32 @@
 
     // 1. 點擊螢幕任意空白處切換隱藏/顯示工具列
     document.addEventListener('click', (e) => {
-      // 若點擊的是工具列內部的按鈕/元素，不觸發隱藏
       if (toolbar.contains(e.target)) return;
       toolbar.classList.toggle('hidden');
     });
 
-    // 2. 閱讀進度計算與顯示
+    // 2. 閱讀進度計算與顯示（精確至小數點後 2 位）
     function updateProgress() {
       const scrollTop = window.pageYOffset || document.documentElement.scrollTop || document.body.scrollTop || 0;
       const scrollHeight = document.documentElement.scrollHeight - document.documentElement.clientHeight;
       
       if (scrollHeight <= 0) {
-        progressBtn.textContent = '0%';
+        progressBtn.textContent = '0.00%';
         return;
       }
 
-      const percent = Math.min(100, Math.max(0, Math.round((scrollTop / scrollHeight) * 100)));
-      progressBtn.textContent = `${percent}%`;
+      const percent = Math.min(100, Math.max(0, (scrollTop / scrollHeight) * 100));
+      progressBtn.textContent = `${percent.toFixed(2)}%`;
     }
 
     window.addEventListener('scroll', updateProgress, { passive: true });
 
-    // 3. 點擊進度按鈕輸入 % 數快轉
+    // 3. 點擊進度按鈕輸入 % 數快轉（支援小數點輸入）
     progressBtn.addEventListener('click', (e) => {
-      e.stopPropagation(); // 防止觸發工具列隱藏
-      const input = prompt('請輸入要跳轉的進度百分比 (0 - 100):', parseInt(progressBtn.textContent) || 0);
+      e.stopPropagation();
+      const currentVal = parseFloat(progressBtn.textContent) || 0;
+      const input = prompt('請輸入要跳轉的進度百分比 (0.00 - 100.00):', currentVal.toFixed(2));
+      
       if (input !== null) {
         const targetPercent = parseFloat(input);
         if (!isNaN(targetPercent) && targetPercent >= 0 && targetPercent <= 100) {
@@ -244,8 +241,8 @@
       }
     });
 
-    // 5. 字體與行距調整
-    let currentFontSize = 18;
+    // 5. 字體與行距調整（預設：字體 24px，行距 1.2）
+    let currentFontSize = 24;
     fontIncBtn.addEventListener('click', (e) => {
       e.stopPropagation();
       currentFontSize += 1;
@@ -260,7 +257,7 @@
       }
     });
 
-    let currentLineHeight = 1.8;
+    let currentLineHeight = 1.2;
     lineIncBtn.addEventListener('click', (e) => {
       e.stopPropagation();
       currentLineHeight = parseFloat((currentLineHeight + 0.1).toFixed(1));
@@ -269,7 +266,7 @@
 
     lineDecBtn.addEventListener('click', (e) => {
       e.stopPropagation();
-      if (currentLineHeight > 1.0) {
+      if (currentLineHeight > 0.8) {
         currentLineHeight = parseFloat((currentLineHeight - 0.1).toFixed(1));
         document.documentElement.style.setProperty('--line-height', currentLineHeight);
       }
