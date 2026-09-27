@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>TXT 閱讀器</title>
+    <!-- 全螢幕 Web App 設定 -->
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <style>
+        :root {
+            /* 預設配色：純黑背景 + 淺茶色文字 */
+            --bg: #121212;
+            --text: #D2C0A5;
+            --panel: rgba(30, 28, 25, 0.9);
+        }
+        body.light {
+            /* 切換後：暖羊皮紙背景 + 深褐字體 */
+            --bg: #F4EAD5;
+            --text: #4A3C31;
+            --panel: rgba(255, 250, 240, 0.9);
+        }
+        body {
+            margin: 0;
+            background-color: var(--bg);
+            color: var(--text);
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "PingFang TC", sans-serif;
+            transition: background-color 0.3s, color 0.3s;
+        }
+        /* 上下流暢連續捲動區 */
+        #content {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 40px 20px 100px;
+            line-height: 1.85;
+            font-size: 18px;
+            white-space: pre-wrap;
+            word-break: break-word;
+            letter-spacing: 0.5px;
+        }
+        /* 懸浮控制列 */
+        #controls {
+            position: fixed;
+            bottom: 25px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: var(--panel);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(210, 192, 165, 0.2);
+            border-radius: 25px;
+            padding: 8px 16px;
+            display: flex;
+            gap: 12px;
+            box-shadow: 0 6px 20px rgba(0,0,0,0.5);
+            z-index: 100;
+        }
+        button, label {
+            background: none;
+            border: none;
+            color: var(--text);
+            font-size: 15px;
+            cursor: pointer;
+            padding: 6px 10px;
+            font-weight: 500;
+        }
+        input[type="file"] { display: none; }
+    </style>
+</head>
+<body>
+
+    <div id="content">點擊下方「📁 開啟」選擇 TXT 小說檔...</div>
+
+    <div id="controls">
+        <label for="fileInput">📁 開啟</label>
+        <input type="file" id="fileInput" accept=".txt">
+        <button id="btnFontDown">A-</button>
+        <button id="btnFontUp">A+</button>
+        <button id="btnTheme">🌙/☀️</button>
+    </div>
+
+    <script>
+        const content = document.getElementById('content');
+        const fileInput = document.getElementById('fileInput');
+        let fontSize = 18;
+
+        fileInput.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = (evt) => {
+                content.innerText = evt.target.result;
+                window.scrollTo(0, 0);
+            };
+            reader.readAsText(file, "UTF-8");
+        });
+
+        document.getElementById('btnFontUp').onclick = () => { 
+            fontSize += 2; 
+            content.style.fontSize = fontSize + 'px'; 
+        };
+        document.getElementById('btnFontDown').onclick = () => { 
+            if(fontSize > 12) {
+                fontSize -= 2; 
+                content.style.fontSize = fontSize + 'px'; 
+            }
+        };
+        document.getElementById('btnTheme').onclick = () => { 
+            document.body.classList.toggle('light'); 
+        };
+    </script>
+</body>
+</html>
