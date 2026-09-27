@@ -40,7 +40,7 @@
       -webkit-overflow-scrolling: touch;
     }
 
-    /* 頂部工具列 */
+    /* 頂部工具列：單列緊湊佈局 */
     .toolbar {
       position: fixed;
       top: 0;
@@ -52,11 +52,17 @@
       -webkit-backdrop-filter: blur(10px);
       border-bottom: 1px solid var(--border-color);
       display: flex;
-      flex-wrap: wrap;
-      gap: 8px;
+      flex-wrap: nowrap;
+      gap: 6px;
       align-items: center;
-      padding: calc(env(safe-area-inset-top) + 8px) 12px 10px 12px;
+      padding: calc(env(safe-area-inset-top) + 8px) 12px 8px 12px;
+      overflow-x: auto;
+      white-space: nowrap;
       transition: transform 0.2s ease;
+    }
+
+    .toolbar::-webkit-scrollbar {
+      display: none;
     }
 
     .toolbar.hidden {
@@ -67,9 +73,9 @@
       background-color: var(--bg-color);
       color: var(--text-color);
       border: 1px solid var(--border-color);
-      padding: 6px 10px;
+      padding: 5px 8px;
       border-radius: 6px;
-      font-size: 14px;
+      font-size: 13px;
       cursor: pointer;
       user-select: none;
       flex-shrink: 0;
@@ -91,31 +97,28 @@
     .progress-slider-container {
       display: flex;
       align-items: center;
-      flex: 1;
-      min-width: 120px;
-      margin-left: 4px;
+      width: 90px;
+      flex-shrink: 0;
     }
 
     .progress-slider {
       width: 100%;
-      height: 6px;
+      height: 4px;
       -webkit-appearance: none;
       appearance: none;
       background: #333;
-      border-radius: 3px;
+      border-radius: 2px;
       outline: none;
     }
 
-    /* 滑桿按鈕樣式 (iOS / WebKit) */
     .progress-slider::-webkit-slider-thumb {
       -webkit-appearance: none;
       appearance: none;
-      width: 18px;
-      height: 18px;
+      width: 16px;
+      height: 16px;
       border-radius: 50%;
       background: #4CAF50;
       cursor: pointer;
-      box-shadow: 0 0 4px rgba(0,0,0,0.5);
     }
 
     input[type="file"] {
@@ -125,7 +128,7 @@
     /* 文章內容區塊 */
     .content-container {
       width: 100%;
-      padding: calc(env(safe-area-inset-top) + 80px) 16px calc(env(safe-area-inset-bottom) + 80px) 16px;
+      padding: calc(env(safe-area-inset-top) + 60px) 16px calc(env(safe-area-inset-bottom) + 60px) 16px;
       font-size: var(--font-size);
       line-height: var(--line-height);
       word-break: break-word;
@@ -134,9 +137,9 @@
     }
 
     .loading-status {
-      font-size: 13px;
+      font-size: 12px;
       color: #aaa;
-      margin-left: 4px;
+      flex-shrink: 0;
     }
   </style>
 </head>
@@ -154,7 +157,6 @@
 
     <button class="btn progress-btn" id="progressBtn">0.00%</button>
 
-    <!-- 進度快轉滑桿 -->
     <div class="progress-slider-container">
       <input type="range" class="progress-slider" id="progressSlider" min="0" max="100" step="0.1" value="0">
     </div>
@@ -169,6 +171,21 @@
   <script>
     // 初始化 OpenCC 繁簡轉換
     const converter = window.OpenCC ? window.OpenCC.Converter({ from: 'cn', to: 'hk' }) : text => text;
+
+    // 將各類引號轉為標準繁體中文標點「」與『』
+    function formatQuotes(text) {
+      return text
+        // 先替換雙引號 “ ” 轉為 「 」
+        .replace(/“/g, '「')
+        .replace(/”/g, '」')
+        // 替換單引號 ‘ ’ 轉為 『 』
+        .replace(/‘/g, '『')
+        .replace(/’/g, '』')
+        // 配對處理英文雙引號 "text" 轉成 「text」
+        .replace(/"([^"]+)"/g, '「$1」')
+        // 配對處理英文單引號 'text' 轉成 『text』
+        .replace(/'([^']+)'/g, '『$1』');
+    }
 
     const toolbar = document.getElementById('toolbar');
     const textContent = document.getElementById('textContent');
@@ -191,7 +208,7 @@
 
     // 2. 頁面滾動時更新 % 數與滑桿位置
     function updateProgressUI() {
-      if (isUserDraggingSlider) return; // 正在拉動時不被頁面滾動蓋過
+      if (isUserDraggingSlider) return;
 
       const scrollTop = window.pageYOffset || document.documentElement.scrollTop || 0;
       const scrollHeight = document.documentElement.scrollHeight - document.documentElement.clientHeight;
@@ -213,7 +230,7 @@
       scrollTimer = requestAnimationFrame(updateProgressUI);
     }, { passive: true });
 
-    // 3. 滑桿拖動控制（快轉/退回）
+    // 3. 滑桿拖動控制
     progressSlider.addEventListener('mousedown', () => isUserDraggingSlider = true);
     progressSlider.addEventListener('touchstart', () => isUserDraggingSlider = true, { passive: true });
 
@@ -249,7 +266,7 @@
       }
     });
 
-    // 5. 檔案載入與轉碼
+    // 5. 檔案載入、轉碼與引號處理
     fileInput.addEventListener('change', async (e) => {
       const file = e.target.files[0];
       if (!file) return;
@@ -279,7 +296,8 @@
           const isFinal = offset + chunkSize >= uint8Array.length;
           const textChunk = decoder.decode(chunk, { stream: !isFinal });
 
-          const convertedChunk = converter(textChunk);
+          // 先進行繁簡轉換，再修正引號
+          const convertedChunk = formatQuotes(converter(textChunk));
           fragment.appendChild(document.createTextNode(convertedChunk));
 
           offset += chunkSize;
