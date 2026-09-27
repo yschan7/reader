@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-  <!-- Safari 全螢幕 Web App 模式（加到主畫面後可隱藏網址列） -->
+  <!-- Safari 全螢幕 Web App 模式（加到主畫面後隱藏網址列） -->
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <title>極簡閱讀器</title>
@@ -17,14 +17,6 @@
       --line-height: 1.8;
     }
 
-    /* 亮色主題 */
-    body.light-theme {
-      --bg-color: #f9f9f9;
-      --text-color: #1a1a1a;
-      --panel-bg: #ffffff;
-      --border-color: #e0e0e0;
-    }
-
     * {
       box-sizing: border-box;
       margin: 0;
@@ -35,8 +27,6 @@
       background-color: var(--bg-color);
       color: var(--text-color);
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-      transition: background-color 0.3s, color 0.3s;
-      /* 支援 iPhone 瀏海與底部 Safe Area */
       padding-top: env(safe-area-inset-top);
       padding-bottom: env(safe-area-inset-bottom);
     }
@@ -63,28 +53,32 @@
       border-radius: 6px;
       font-size: 14px;
       cursor: pointer;
+      user-select: none;
     }
 
     .btn:active {
-      opacity: 0.7;
+      opacity: 0.6;
     }
 
     input[type="file"] {
       display: none;
     }
 
-    /* 文章內容區塊：左右完全無邊距 (padding: 0) */
+    /* 文章內容區塊：左右邊距完全拉到最盡 (padding 0) */
     .content-container {
       width: 100%;
-      padding: 16px 0; /* 上下留白，左右完全拉到最盡 */
+      padding: 16px 0;
       font-size: var(--font-size);
       line-height: var(--line-height);
       word-break: break-word;
       white-space: pre-wrap;
     }
 
-    .content-container p {
-      margin-bottom: 1em;
+    /* 載入提示 */
+    .loading-status {
+      font-size: 14px;
+      color: #888;
+      margin-left: 4px;
     }
   </style>
 </head>
@@ -93,95 +87,107 @@
   <!-- 控制工具列 -->
   <div class="toolbar">
     <label class="btn" for="fileInput">📁 開啟檔案</label>
-    <input type="file" id="fileInput" accept=".txt,.html,.md">
+    <input type="file" id="fileInput" accept=".txt,.html,.md,.text">
     
-    <button class="btn" id="themeBtn">🌙 切換主題</button>
     <button class="btn" id="fontIncBtn">字體 +</button>
     <button class="btn" id="fontDecBtn">字體 -</button>
-    <button class="btn" id="lineHeightBtn">行距: 1.8x</button>
+    
+    <button class="btn" id="lineIncBtn">行距 +</button>
+    <button class="btn" id="lineDecBtn">行距 -</button>
+
+    <span class="loading-status" id="statusText"></span>
   </div>
 
   <!-- 閱讀區域 -->
   <div class="content-container" id="textContent">
-    請點擊上方「開啟檔案」載入文章，或直接在此貼上內文...
+    請點擊上方「開啟檔案」載入文章...
   </div>
 
   <script>
-    // 簡體轉繁體常用字典與轉換函數
-    function convertS2T(str) {
-      if (!str) return '';
-      const s = '两个国这来时大动门间关书发对说以主生年会同后自下得看家种学多心法自要出人着体问只样现能成过里面好法应样想见分点作开位经公长明相得明法';
-      const t = '兩個國這來時大動門間關書發對說以主生年會同後自下得看家種學多心法自要出人著體問隻樣現能成過裏面好法應樣想見分點作開位經公長明相得明法';
-      
-      let result = '';
-      for (let i = 0; i < str.length; i++) {
-        const char = str[i];
-        const index = s.indexOf(char);
-        if (index !== -1) {
-          result += t[index];
-        } else {
-          result += char;
-        }
-      }
-      return result;
+    // 常用簡繁對照字典（可高效映射）
+    const dict = {
+      '国':'國','这':'這','来':'來','时':'時','大':'大','动':'動','门':'門','间':'間','关':'關','书':'書','发':'發',
+      '对':'對','说':'說','以':'以','主':'主','生':'生','年':'年','会':'會','同':'同','后':'後','自':'自','下':'下',
+      '得':'得','看':'看','家':'家','种':'種','学':'學','多':'多','心':'心','法':'法','要':'要','出':'出','人':'人',
+      '着':'著','体':'體','问':'問','只':'隻','样':'樣','现':'現','能':'能','成':'成','过':'過','里':'裡','面':'面',
+      '好':'好','应':'應','想':'想','见':'見','分':'分','点':'點','作':'作','开':'開','位':'位','经':'經','公':'公',
+      '长':'長','明':'明','相':'相'
+    };
+
+    // 簡轉繁高效轉換
+    function fastS2T(text) {
+      return text.replace(/[国这来时动门间关书发对说年会后种学体问只样现过里面应见点开经长]/g, m => dict[m] || m);
     }
 
-    // 元素綁定
+    // 元素 DOM
     const textContent = document.getElementById('textContent');
     const fileInput = document.getElementById('fileInput');
-    const themeBtn = document.getElementById('themeBtn');
     const fontIncBtn = document.getElementById('fontIncBtn');
     const fontDecBtn = document.getElementById('fontDecBtn');
-    const lineHeightBtn = document.getElementById('lineHeightBtn');
+    const lineIncBtn = document.getElementById('lineIncBtn');
+    const lineDecBtn = document.getElementById('lineDecBtn');
+    const statusText = document.getElementById('statusText');
 
-    // 1. 檔案讀取與自動簡轉繁
+    // 1. 大檔案非阻塞載入與轉繁體
     fileInput.addEventListener('change', (e) => {
       const file = e.target.files[0];
       if (!file) return;
 
+      statusText.textContent = '載入中...';
+      textContent.textContent = '';
+
       const reader = new FileReader();
       reader.onload = (evt) => {
         const rawText = evt.target.result;
-        // 自動轉換簡體字為繁體字
-        const convertedText = convertS2T(rawText);
-        textContent.textContent = convertedText;
-        window.scrollTo({ top: 0, behavior: 'smooth' });
+        
+        // 分塊異步處理，避免大文字檔卡死瀏覽器 UI
+        const chunkSize = 50000; // 每批處理 5萬 字
+        let index = 0;
+
+        function processChunk() {
+          if (index < rawText.length) {
+            const chunk = rawText.slice(index, index + chunkSize);
+            textContent.textContent += fastS2T(chunk);
+            index += chunkSize;
+            statusText.textContent = `載入中... (${Math.min(100, Math.round((index / rawText.length) * 100))}%)`;
+            setTimeout(processChunk, 10);
+          } else {
+            statusText.textContent = '';
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+          }
+        }
+
+        processChunk();
       };
       reader.readAsText(file);
     });
 
-    // 2. 切換主題
-    themeBtn.addEventListener('click', () => {
-      document.body.classList.toggle('light-theme');
-      const isLight = document.body.classList.contains('light-theme');
-      themeBtn.textContent = isLight ? '☀️ 淺色主題' : '🌙 暗色主題';
-    });
-
-    // 3. 調較字體大小
+    // 2. 無限調整字體大小
     let currentFontSize = 18;
     fontIncBtn.addEventListener('click', () => {
-      if (currentFontSize < 36) {
-        currentFontSize += 2;
-        document.documentElement.style.setProperty('--font-size', currentFontSize + 'px');
-      }
+      currentFontSize += 1;
+      document.documentElement.style.setProperty('--font-size', currentFontSize + 'px');
     });
 
     fontDecBtn.addEventListener('click', () => {
-      if (currentFontSize > 12) {
-        currentFontSize -= 2;
+      if (currentFontSize > 8) {
+        currentFontSize -= 1;
         document.documentElement.style.setProperty('--font-size', currentFontSize + 'px');
       }
     });
 
-    // 4. 調較上下行距
-    const lineHeights = [1.4, 1.8, 2.2];
-    let lineHeightIndex = 1;
+    // 3. 無限調整行距（上下空間）
+    let currentLineHeight = 1.8;
+    lineIncBtn.addEventListener('click', () => {
+      currentLineHeight = parseFloat((currentLineHeight + 0.1).toFixed(1));
+      document.documentElement.style.setProperty('--line-height', currentLineHeight);
+    });
 
-    lineHeightBtn.addEventListener('click', () => {
-      lineHeightIndex = (lineHeightIndex + 1) % lineHeights.length;
-      const selectedLineHeight = lineHeights[lineHeightIndex];
-      document.documentElement.style.setProperty('--line-height', selectedLineHeight);
-      lineHeightBtn.textContent = `行距: ${selectedLineHeight}x`;
+    lineDecBtn.addEventListener('click', () => {
+      if (currentLineHeight > 1.0) {
+        currentLineHeight = parseFloat((currentLineHeight - 0.1).toFixed(1));
+        document.documentElement.style.setProperty('--line-height', currentLineHeight);
+      }
     });
   </script>
 </body>
