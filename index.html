@@ -6,6 +6,10 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <title>極簡閱讀器</title>
+  
+  <!-- 高精準度 OpenCC 繁簡轉換庫 -->
+  <script src="https://cdn.jsdelivr.net/npm/opencc-js@1.0.5/dist/umd/cn2t.js"></script>
+
   <style>
     :root {
       --bg-color: #121212;
@@ -23,7 +27,6 @@
     }
 
     html {
-      /* 禁用 smooth 滾動，防止 iOS 在長頁面跳轉時 GPU 崩潰 */
       scroll-behavior: auto !important;
     }
 
@@ -37,6 +40,7 @@
       -webkit-overflow-scrolling: touch;
     }
 
+    /* 頂部工具列 */
     .toolbar {
       position: fixed;
       top: 0;
@@ -68,6 +72,7 @@
       font-size: 14px;
       cursor: pointer;
       user-select: none;
+      flex-shrink: 0;
     }
 
     .btn:active {
@@ -79,20 +84,52 @@
       color: #4CAF50;
       border: 1px solid #4CAF50;
       font-weight: bold;
+      flex-shrink: 0;
+    }
+
+    /* 進度滑桿容器 */
+    .progress-slider-container {
+      display: flex;
+      align-items: center;
+      flex: 1;
+      min-width: 120px;
+      margin-left: 4px;
+    }
+
+    .progress-slider {
+      width: 100%;
+      height: 6px;
+      -webkit-appearance: none;
+      appearance: none;
+      background: #333;
+      border-radius: 3px;
+      outline: none;
+    }
+
+    /* 滑桿按鈕樣式 (iOS / WebKit) */
+    .progress-slider::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      background: #4CAF50;
+      cursor: pointer;
+      box-shadow: 0 0 4px rgba(0,0,0,0.5);
     }
 
     input[type="file"] {
       display: none;
     }
 
+    /* 文章內容區塊 */
     .content-container {
       width: 100%;
-      padding: calc(env(safe-area-inset-top) + 70px) 16px calc(env(safe-area-inset-bottom) + 70px) 16px;
+      padding: calc(env(safe-area-inset-top) + 80px) 16px calc(env(safe-area-inset-bottom) + 80px) 16px;
       font-size: var(--font-size);
       line-height: var(--line-height);
       word-break: break-word;
       white-space: pre-wrap;
-      /* 啟用硬體加速優化渲染 */
       transform: translateZ(0);
     }
 
@@ -117,6 +154,11 @@
 
     <button class="btn progress-btn" id="progressBtn">0.00%</button>
 
+    <!-- 進度快轉滑桿 -->
+    <div class="progress-slider-container">
+      <input type="range" class="progress-slider" id="progressSlider" min="0" max="100" step="0.1" value="0">
+    </div>
+
     <span class="loading-status" id="statusText"></span>
   </div>
 
@@ -125,89 +167,8 @@
   </div>
 
   <script>
-    // 精確簡繁轉換字典對映（修正錯位問題）
-    const S2T_MAP = {
-      '万':'萬','与':'與','专':'專','业':'業','丛':'叢','东':'東','丝':'絲','丢':'丟','两':'兩','严':'嚴',
-      '丧':'喪','个':'個','临':'臨','丽':'麗','举':'舉','么':'麼','义':'義','乌':'烏','乐':'樂','乔':'喬',
-      '习':'習','乡':'鄉','书':'書','买':'買','乱':'亂','争':'爭','于':'於','亏':'虧','云':'雲','亚':'亞',
-      '产':'產','亩':'畝','亲':'親','亿':'億','从':'從','仓':'倉','仪':'儀','们':'們','价':'價','众':'衆',
-      '优':'優','伙':'夥','会':'會','伟':'偉','传':'傳','伤':'傷','伦':'倫','伪':'僞','体':'體','余':'餘',
-      '佣':'傭','侠':'俠','侣':'侶','侥':'僥','侦':'偵','侧':'側','侨':'僑','侩':'儈','侬':'儂','信':'信',
-      '俭':'儉','借':'借','倾':'傾','假':'假','偿':'償','傀':'傀','傅':'傅','傍':'傍','杰':'傑','儐':'儐',
-      '储':'儲','俨':'儼','关':'關','兴':'興','兹':'茲','养':'養','兽':'獸','内':'內','册':'冊','写':'寫',
-      '军':'軍','农':'農','冲':'沖','决':'決','况':'況','冷':'冷','准':'準','凌':'凌','减':'減','凝':'凝',
-      '几':'幾','凡':'凡','凤':'鳳','凭':'憑','凯':'凱','击':'擊','凿':'鑿','划':'劃','刘':'劉','则':'則',
-      '刚':'剛','创':'創','删':'刪','别':'別','劫':'劫','刮':'刮','到':'到','制':'制','刷':'刷','刺':'刺',
-      '刻':'刻','刽':'劊','剁':'剁','剂':'劑','剃':'剃','削':'削','前':'前','剐':'剮','剑':'劍','剥':'剝',
-      '剧':'劇','剩':'剩','剪':'剪','副副':'副','割割':'割','力':'力','办':'辦','劝':'勸','功':'功','加':'加',
-      '务':'務','动':'動','助':'助','努':'努','劫':'劫','励':'勵','劲':'勁','劳':'勞','势':'勢','勃':'勃',
-      '勇':'勇','勋':'勳','勒':'勒','勘':'勘','募':'募','勤':'勤','勺':'勺','勾':'勾','匀':'勻','包':'包',
-      '匆':'匆','化':'化','北':'北','匙':'匙','匹':'匹','区':'區','医':'醫','华':'華','协':'協','单':'單',
-      '卖':'賣','南':'南','博':'博','卜':'卜','占':'占','卡':'卡','卢':'盧','卤':'鹵','卧':'臥','卫':'衛',
-      '印':'印','危':'危','即':'即','却':'卻','卵':'卵','卷':'卷','卸':'卸','厂':'廠','历':'歷','厉':'厲',
-      '压':'壓','厌':'厭','厕':'廁','厘':'釐','厚':'厚','原':'原','厢':'廂','厦':'廈','厨':'廚','去':'去',
-      '县':'縣','参':'參','又':'又','叉':'叉','及':'及','友':'友','双':'雙','反':'反','发':'發','叔':'叔',
-      '取':'取','受':'受','变':'變','叙':'敘','叛':'叛','叠':'疊','口':'口','古':'古','句':'句','另':'另',
-      '叮':'叮','可':'可','台':'臺','史':'史','右':'右','叶':'葉','号':'號','司':'司','叹':'嘆','吃':'吃',
-      '各':'各','合':'合','吉':'吉','吊':'吊','同':'同','名':'名','后':'後','吏':'吏','吐':'吐','向':'向',
-      '吓':'嚇','吕':'呂','吗':'嗎','吞':'吞','吟':'吟','吠':'吠','负':'負','吝':'吝','听':'聽','启':'啓',
-      '吴':'吳','吵':'吵','呐':'吶','吸':'吸','吹':'吹','吻':'吻','吼':'吼','吾':'吾','呀':'呀','呆':'呆',
-      '呈':'呈','告':'告','员':'員','呜':'嗚','呢':'呢','呤':'呤','呦':'呦','周':'周','查':'查','呼':'呼',
-      '命':'命','咀':'咀','咆':'咆','咤':'咤','唧':'唧','唾':'唾','唯':'唯','唱唱':'唱','念':'念','啃':'啃',
-      '啄':'啄','商':'商','啊':'啊','啐':'啐','啕':'啕','唤':'喚','喜':'喜','喝':'喝','喧':'喧','喷':'噴',
-      '喻':'喻','噪':'噪','噬':'噬','嗷':'嗷','嗽':'嗽','嘀':'嘀','嘈':'嘈','嘉':'嘉','嘴':'嘴','嚅':'嚅',
-      '嚎':'嚎','嚏':'嚏','嚓':'嚓','嚣':'囂','嚼':'嚼','囊':'囊','囗':'囗','四':'四','回':'回','因':'因',
-      '团':'團','园':'園','困':'困','围':'圍','囵':'綸','图':'圖','国':'國','圆':'圓','圈':'圈','土':'土',
-      '圣':'聖','在':'在','圩':'圩','圬':'圬','圭':'圭','地':'地','圳':'圳','场':'場','圾':'圾','坂':'坂',
-      '均':'均','坊':'坊','坎':'坎','坏':'壞','坐':'坐','坑':'坑','块':'塊','坚':'堅','坛':'壇','坝':'壩',
-      '坞':'塢','坟':'墳','坠':'墜','坡':'坡','坤':'坤','坦':'坦','坪':'坪','垂':'垂','垃':'垃','垄':'壟',
-      '型':'型','垒':'壘','城':'城','埔':'埔','域':'域','埠':'埠','培':'培','基':'基','堂':'堂','堆':'堆',
-      '堑':'塹','堕':'墮','堡':'堡','堤':'堤','堪':'堪','报':'報','堵':'堵','塌':'塌','塔':'塔','墓':'墓',
-      '墙':'牆','增':'增','墟':'墟','墨墨':'墨','墩':'墩','壁':'壁','压':'壓','壕':'壕','士':'士','壬':'壬',
-      '壮':'壯','声':'聲','壳':'殼','壶':'壺','壹':'壹','处':'處','备':'備','复':'複','夏':'夏','夕':'夕',
-      '外':'外','多':'多','夜':'夜','够':'夠','伙':'夥','大':'大','天':'天','太':'太','人':'人','夫':'夫',
-      '失':'失','头':'頭','夷':'夷','夸':'誇','夹':'夾','夺':'奪','奄':'奄','奇':'奇','奈':'奈','奉':'奉',
-      '奋':'奮','奎':'奎','奏':'奏','契':'契','奔':'奔','奖':'獎','套套':'套','奥':'奧','女':'女','奴':'奴',
-      '奶':'奶','奸':'奸','她':'她','好':'好','如':'如','妃妃':'妃','妄':'妄','妇':'婦','妈':'媽','妒':'妒',
-      '妓':'妓','妖':'妖','妙':'妙','妥':'妥','妨':'妨','妩':'嫵','妮':'妮','诞':'誕','姊':'姊','始':'始',
-      '姐':'姐','姑':'姑','姓':'姓','委':'委','姿':'姿','威':'威','娃':'娃','娄':'婁','娅':'婭','娆':'嬈',
-      '娇':'嬌','娈':'娈','娘':'娘','娜':'娜','娟':'娟','娱':'娛','娲':'媧','娴':'嫻','婵':'嬋','婷':'婷',
-      '媚':'媚','媛':'媛','媪':'媼','媲':'媲','媳':'媳','妈':'媽','嫗':'嫗','嫡':'嫡','嫦':'嫦','嫩':'嫩',
-      '嫱':'嬙','嬉':'嬉','嬢':'嬢','嬷':'嬤','孀':'孀','子':'子','孔':'孔','孕':'孕','字':'字','存':'存',
-      '孙':'孫','孚':'孚','孝':'孝','孟':'孟','孢':'孢','季':'季','孤':'孤','学':'學','孩':'孩','孪':'攣',
-      '孰':'孰','它':'它','宅':'宅','宇':'宇','守':'守','安':'安','宋':'宋','完':'完','宏':'宏','宗':'宗',
-      '官':'官','宙':'宙','定':'定','宛':'宛','宜':'宜','宝':'寶','实':'實','宠':'寵','审':'審','客':'客',
-      '宣':'宣','室':'室','宪':'憲','宫':'宮','宰':'宰','害':'害','宴':'宴','宵':'宵','家':'家','宸':'宸',
-      '容':'容','宽':'寬','宾':'賓','宿':'宿','寂':'寂','寄':'寄','寅':'寅','密':'密','寇':'寇','富':'富',
-      '寐':'寐','寒':'寒','寓':'寓','寝':'寢','寞':'寞','察':'察','寡':'寡','寤':'寤','寥':'寥','宁':'寧',
-      '寨':'寨','写':'寫','寮':'寮','寰':'寰','寸':'寸','对':'對','寺':'寺','寻':'尋','导':'導','寿':'壽',
-      '封':'封','射':'射','将':'將','专':'專','尉':'尉','尊':'尊','小':'小','少':'少','尔':'爾','尖':'尖',
-      '尘':'塵','尚':'尚','尤':'尤','就':'就','尴尬':'尷尬','尸':'屍','尹':'尹','尺':'尺','尼':'尼','尽':'盡',
-      '尾':'尾','局':'局','屁':'屁','层':'層','居':'居','屈':'屈','屉':'屜','届':'屆','屋':'屋','屎':'屎',
-      '屏':'屏','屑':'屑','展':'展','履':'履','属':'屬','山':'山','岁':'歲','岂':'豈','岗':'崗','岘':'峴',
-      '岚':'嵐','岛':'島','岭':'嶺','岳':'嶽','岷':'岷','峄':'嶧','峣':'嶢','峤':'嶠','峦':'巒','崖':'崖',
-      '峥':'崢','嵘':'嶸','嵚':'嶔','嶝':'嶝','嶞':'嶞','嶮':'嶮','嶸':'嶸','巃':'巃','巇':'巇','巑':'巑',
-      '川':'川','州':'州','巡':'巡','巢':'巢','工':'工','左':'左','巧':'巧','巨':'巨','巫':'巫','差':'差',
-      '己':'己','已':'已','巳':'巳','巴':'巴','巷':'巷','巾':'巾','币':'幣','市':'市','布':'布','帅':'帥',
-      '师':'師','希':'希','帐':'帳','帕':'帕','帖':'帖','帛':'帛','帜':'幟','帝':'帝','带':'帶','帧':'幀',
-      '席':'席','帮':'幫','帱':'疇','帷':'帷','常':'常','帽':'帽','幂':'冪','幅':'幅','幌':'幌','幔':'幔',
-      '幕':'幕','幡':'幡','幢':'幢','干':'乾','平':'平','年':'年','并':'並','幸':'幸','广':'廣','庄':'莊',
-      '庆':'慶','庇':'庇','床':'床','庑':'廡','库':'庫','应':'應','底':'底','店':'店','庙':'廟','庚':'庚',
-      '府':'府','庞':'龐','废':'廢','度':'度','座':'座','庭':'庭','庵':'庵','庶':'庶','康':'康','庸':'庸',
-      '廉':'廉','廊廊':'廊','廄':'廄','廕':'廕','廖':'廖','延':'延','廷':'廷','建':'建','开':'開','异':'異',
-      '弃':'棄','弄':'弄','弈':'弈','弊':'弊','弋':'弋','式':'式','弑':'弒','弓':'弓','引':'引','弗':'弗',
-      '弘':'弘','弛':'弛','弟':'弟','张':'張','弥':'彌','弦':'弦','弯':'彎','弱':'弱','弹':'彈','强':'強',
-      '归':'歸','当':'當','录':'錄','彗':'彗','彝':'彝','形':'形','彦':'彥','彩':'彩','彪':'彪','彬':'彬',
-      '彭':'彭','彰':'彰','影':'影','彷':'彷','役':'役','彻':'徹','彼':'彼','往':'往','征':'征','径':'徑',
-      '待':'待','旬':'旬','很':'很','徊':'徊','律':'律','後':'後','徐':'徐','徒':'徒','徕':'徠','得':'得',
-      '徘':'徘','徙':'徙','徜':'徜','御':'御','徨':'徨','循':'循','微':'微','徵':'徵','德':'德','心':'心',
-      '必':'必','忆':'憶','忌':'忌','忍':'忍','忏':'懺','忐':'忐','忑':'忑','忒':'忒','忖':'忖','志':'志',
-      '忘':'忘','忙':'忙','忠':'忠','忡':'忡','忤':'忤','忧':'憂','快':'快'
-    };
-
-    function fastS2T(text) {
-      return text.replace(/[\u4e00-\u9fa5]/g, m => S2T_MAP[m] || m);
-    }
+    // 初始化 OpenCC 繁簡轉換
+    const converter = window.OpenCC ? window.OpenCC.Converter({ from: 'cn', to: 'hk' }) : text => text;
 
     const toolbar = document.getElementById('toolbar');
     const textContent = document.getElementById('textContent');
@@ -217,33 +178,59 @@
     const lineIncBtn = document.getElementById('lineIncBtn');
     const lineDecBtn = document.getElementById('lineDecBtn');
     const progressBtn = document.getElementById('progressBtn');
+    const progressSlider = document.getElementById('progressSlider');
     const statusText = document.getElementById('statusText');
 
-    // 1. 點擊螢幕空白處切換工具列
+    let isUserDraggingSlider = false;
+
+    // 1. 點擊空白處隱藏/顯示選單
     document.addEventListener('click', (e) => {
       if (toolbar.contains(e.target)) return;
       toolbar.classList.toggle('hidden');
     });
 
-    // 2. 閱讀進度更新
-    function updateProgress() {
+    // 2. 頁面滾動時更新 % 數與滑桿位置
+    function updateProgressUI() {
+      if (isUserDraggingSlider) return; // 正在拉動時不被頁面滾動蓋過
+
       const scrollTop = window.pageYOffset || document.documentElement.scrollTop || 0;
       const scrollHeight = document.documentElement.scrollHeight - document.documentElement.clientHeight;
+      
       if (scrollHeight <= 0) {
         progressBtn.textContent = '0.00%';
+        progressSlider.value = 0;
         return;
       }
+
       const percent = Math.min(100, Math.max(0, (scrollTop / scrollHeight) * 100));
       progressBtn.textContent = `${percent.toFixed(2)}%`;
+      progressSlider.value = percent;
     }
 
     let scrollTimer;
     window.addEventListener('scroll', () => {
       if (scrollTimer) cancelAnimationFrame(scrollTimer);
-      scrollTimer = requestAnimationFrame(updateProgress);
+      scrollTimer = requestAnimationFrame(updateProgressUI);
     }, { passive: true });
 
-    // 3. 安全快速跳轉（防 Safari GPU 崩潰）
+    // 3. 滑桿拖動控制（快轉/退回）
+    progressSlider.addEventListener('mousedown', () => isUserDraggingSlider = true);
+    progressSlider.addEventListener('touchstart', () => isUserDraggingSlider = true, { passive: true });
+
+    progressSlider.addEventListener('input', (e) => {
+      const targetPercent = parseFloat(e.target.value);
+      progressBtn.textContent = `${targetPercent.toFixed(2)}%`;
+      
+      const scrollHeight = document.documentElement.scrollHeight - document.documentElement.clientHeight;
+      const targetY = (targetPercent / 100) * scrollHeight;
+      
+      window.scrollTo(0, targetY);
+    });
+
+    progressSlider.addEventListener('mouseup', () => isUserDraggingSlider = false);
+    progressSlider.addEventListener('touchend', () => isUserDraggingSlider = false);
+
+    // 4. 點擊數字按鈕輸入精準進度
     progressBtn.addEventListener('click', (e) => {
       e.stopPropagation();
       const currentVal = parseFloat(progressBtn.textContent) || 0;
@@ -256,14 +243,13 @@
           const scrollHeight = document.documentElement.scrollHeight - document.documentElement.clientHeight;
           const targetY = (clamped / 100) * scrollHeight;
 
-          // 核心修復：使用瞬間跳轉取代平滑滾動，避免 iOS Safari 在幾百萬像素長度下繪圖線程直接 Crash
           window.scrollTo(0, targetY);
-          updateProgress();
+          updateProgressUI();
         }
       }
     });
 
-    // 4. 讀取與分區塊渲染
+    // 5. 檔案載入與轉碼
     fileInput.addEventListener('change', async (e) => {
       const file = e.target.files[0];
       if (!file) return;
@@ -284,7 +270,7 @@
         }
 
         const decoder = new TextDecoder(encoding);
-        const chunkSize = 150000;
+        const chunkSize = 100000;
         let offset = 0;
         const fragment = document.createDocumentFragment();
 
@@ -293,7 +279,7 @@
           const isFinal = offset + chunkSize >= uint8Array.length;
           const textChunk = decoder.decode(chunk, { stream: !isFinal });
 
-          const convertedChunk = fastS2T(textChunk);
+          const convertedChunk = converter(textChunk);
           fragment.appendChild(document.createTextNode(convertedChunk));
 
           offset += chunkSize;
@@ -305,14 +291,14 @@
         statusText.textContent = '';
         window.scrollTo(0, 0);
         toolbar.classList.remove('hidden');
-        updateProgress();
+        updateProgressUI();
       } catch (err) {
         console.error(err);
         statusText.textContent = '載入失敗';
       }
     });
 
-    // 5. 字體與行距
+    // 6. 字體與行距調整
     let currentFontSize = 26;
     fontIncBtn.addEventListener('click', (e) => {
       e.stopPropagation();
