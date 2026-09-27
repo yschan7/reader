@@ -11,7 +11,7 @@
     :root {
       --bg-color: #121212;
       --text-color: #e0e0e0;
-      --panel-bg: rgba(30, 30, 30, 0.92);
+      --panel-bg: rgba(30, 30, 30, 0.95);
       --border-color: #333;
       --font-size: 18px;
       --line-height: 1.8;
@@ -35,7 +35,7 @@
       padding-bottom: env(safe-area-inset-bottom);
     }
 
-    /* 頂部工具列：支援自動隱藏動畫 */
+    /* 頂部工具列：自動隱藏效果 */
     .toolbar {
       position: fixed;
       top: 0;
@@ -51,10 +51,11 @@
       gap: 8px;
       align-items: center;
       padding: calc(env(safe-area-inset-top) + 8px) 12px 10px 12px;
-      transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      transition: transform 0.3s ease;
+      will-change: transform;
     }
 
-    /* 滾動時隱藏工具列 */
+    /* 滾動隱藏類別 */
     .toolbar.hidden {
       transform: translateY(-100%);
     }
@@ -78,17 +79,16 @@
       display: none;
     }
 
-    /* 文章內容區塊：左右完全緊貼螢幕盡頭 (padding 0) */
+    /* 文章內容區塊：左右邊距完全拉到最盡 (padding 0) */
     .content-container {
       width: 100%;
-      padding: calc(env(safe-area-inset-top) + 60px) 0 env(safe-area-inset-bottom) 0;
+      padding: calc(env(safe-area-inset-top) + 70px) 0 env(safe-area-inset-bottom) 0;
       font-size: var(--font-size);
       line-height: var(--line-height);
       word-break: break-word;
       white-space: pre-wrap;
     }
 
-    /* 載入提示 */
     .loading-status {
       font-size: 13px;
       color: #aaa;
@@ -104,7 +104,7 @@
     <input type="file" id="fileInput" accept=".txt,.html,.md,.text">
     
     <button class="btn" id="fontIncBtn">字體 +</button>
-    <button class="btn" id="fontDecBtn">字体 -</button>
+    <button class="btn" id="fontDecBtn">字體 -</button>
     
     <button class="btn" id="lineIncBtn">行距 +</button>
     <button class="btn" id="lineDecBtn">行距 -</button>
@@ -118,7 +118,7 @@
   </div>
 
   <script>
-    // 擴充常用簡繁對照字典
+    // 常用簡繁對照字典
     const dict = {
       '国':'國','这':'這','来':'來','时':'時','大':'大','动':'動','门':'門','间':'間','关':'關','书':'書','发':'發',
       '对':'對','说':'說','以':'以','主':'主','生':'生','年':'年','会':'會','同':'同','后':'後','自':'自','下':'下',
@@ -146,21 +146,26 @@
     const lineDecBtn = document.getElementById('lineDecBtn');
     const statusText = document.getElementById('statusText');
 
-    // 1. 滾動自動隱藏/顯示工具列 (Scroll Auto-Hide)
-    let lastScrollY = window.scrollY;
-    window.addEventListener('scroll', () => {
-      const currentScrollY = window.scrollY;
+    // 1. 滾動隱藏/顯示工具列（支援 iOS Safari PWA 滾動特徵）
+    let lastScrollY = 0;
+    
+    function handleScroll() {
+      const currentScrollY = window.pageYOffset || document.documentElement.scrollTop || document.body.scrollTop || 0;
       
-      // 向上滾動超過 20px 隱藏工具列，向下滾動顯示
-      if (currentScrollY > lastScrollY && currentScrollY > 50) {
+      // 向下滑動且超過 30px 時隱藏
+      if (currentScrollY > lastScrollY && currentScrollY > 30) {
         toolbar.classList.add('hidden');
-      } else {
+      } else if (currentScrollY < lastScrollY) {
+        // 向上滑動時顯示
         toolbar.classList.remove('hidden');
       }
       lastScrollY = currentScrollY;
-    }, { passive: true });
+    }
 
-    // 2. 超大檔案流式（Stream）極速讀取，防止記憶體溢出
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    document.addEventListener('scroll', handleScroll, { passive: true });
+
+    // 2. 自動偵測 GBK / UTF-8 編碼並轉換，解決中文亂碼問題
     fileInput.addEventListener('change', async (e) => {
       const file = e.target.files[0];
       if (!file) return;
@@ -169,36 +174,45 @@
       textContent.textContent = '';
 
       try {
-        const stream = file.stream();
-        const reader = stream.getReader();
-        const decoder = new TextDecoder('utf-8');
-        let loadedBytes = 0;
-        const totalBytes = file.size;
+        const arrayBuffer = await file.arrayBuffer();
+        const uint8Array = new Uint8Array(arrayBuffer);
 
-        while (true) {
-          const { done, value } = await reader.read();
-          if (done) break;
+        // 偵測是否為 UTF-8 或 GBK 編碼
+        let encoding = 'utf-8';
+        try {
+          const utf8Decoder = new TextDecoder('utf-8', { fatal: true });
+          utf8Decoder.decode(uint8Array.subarray(0, 10000));
+        } catch (err) {
+          // 若 UTF-8 解析失敗則切換為 GB18030 (相容 GBK / GB2312 中文檔案)
+          encoding = 'gb18030';
+        }
 
-          loadedBytes += value.length;
-          const chunkText = decoder.decode(value, { stream: true });
-          
-          // 分塊轉換並掛載到 DOM
-          const node = document.createTextNode(fastS2T(chunkText));
-          textContent.appendChild(node);
+        const decoder = new TextDecoder(encoding);
+        const chunkSize = 200000; // 每次處理 20萬 位元組
+        let offset = 0;
 
-          // 更新進度
-          const percent = Math.min(100, Math.round((loadedBytes / totalBytes) * 100));
+        while (offset < uint8Array.length) {
+          const chunk = uint8Array.subarray(offset, offset + chunkSize);
+          const isFinal = offset + chunkSize >= uint8Array.length;
+          const textChunk = decoder.decode(chunk, { stream: !isFinal });
+
+          // 轉繁體並寫入
+          const convertedChunk = fastS2T(textChunk);
+          textContent.appendChild(document.createTextNode(convertedChunk));
+
+          offset += chunkSize;
+          const percent = Math.min(100, Math.round((offset / uint8Array.length) * 100));
           statusText.textContent = `${percent}%`;
 
-          // 給 UI 渲染留出微小時間隙，防止畫面凍結
           await new Promise(r => setTimeout(r, 0));
         }
 
         statusText.textContent = '';
         window.scrollTo({ top: 0, behavior: 'smooth' });
+        toolbar.classList.remove('hidden');
       } catch (err) {
         console.error(err);
-        statusText.textContent = '檔案開啟失敗';
+        statusText.textContent = '讀取失敗';
       }
     });
 
