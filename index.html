@@ -28,6 +28,7 @@
       color: var(--text-color);
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
       overflow-x: hidden;
+      min-height: 100vh;
     }
 
     body {
@@ -35,7 +36,7 @@
       padding-bottom: env(safe-area-inset-bottom);
     }
 
-    /* 頂部工具列：自動隱藏效果 */
+    /* 頂部工具列：點擊切換顯示/隱藏 */
     .toolbar {
       position: fixed;
       top: 0;
@@ -51,11 +52,11 @@
       gap: 8px;
       align-items: center;
       padding: calc(env(safe-area-inset-top) + 8px) 12px 10px 12px;
-      transition: transform 0.3s ease;
+      transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1);
       will-change: transform;
     }
 
-    /* 滾動隱藏類別 */
+    /* 隱藏狀態 */
     .toolbar.hidden {
       transform: translateY(-100%);
     }
@@ -64,7 +65,7 @@
       background-color: var(--bg-color);
       color: var(--text-color);
       border: 1px solid var(--border-color);
-      padding: 6px 12px;
+      padding: 6px 10px;
       border-radius: 6px;
       font-size: 14px;
       cursor: pointer;
@@ -75,14 +76,22 @@
       opacity: 0.6;
     }
 
+    /* 閱讀進度按鈕樣式 */
+    .progress-btn {
+      background-color: #2a2a2a;
+      color: #4CAF50;
+      border: 1px solid #4CAF50;
+      font-weight: bold;
+    }
+
     input[type="file"] {
       display: none;
     }
 
-    /* 文章內容區塊：左右邊距完全拉到最盡 (padding 0) */
+    /* 文章內容區塊 */
     .content-container {
       width: 100%;
-      padding: calc(env(safe-area-inset-top) + 70px) 0 env(safe-area-inset-bottom) 0;
+      padding: calc(env(safe-area-inset-top) + 70px) 12px calc(env(safe-area-inset-bottom) + 20px) 12px;
       font-size: var(--font-size);
       line-height: var(--line-height);
       word-break: break-word;
@@ -98,7 +107,7 @@
 </head>
 <body>
 
-  <!-- 固定/自動隱藏控制工具列 -->
+  <!-- 固定/點擊切換隱藏控制工具列 -->
   <div class="toolbar" id="toolbar">
     <label class="btn" for="fileInput">📁 開啟檔案</label>
     <input type="file" id="fileInput" accept=".txt,.html,.md,.text">
@@ -109,6 +118,9 @@
     <button class="btn" id="lineIncBtn">行距 +</button>
     <button class="btn" id="lineDecBtn">行距 -</button>
 
+    <!-- 進度與快轉按鈕 -->
+    <button class="btn progress-btn" id="progressBtn" title="點擊輸入進度">0%</button>
+
     <span class="loading-status" id="statusText"></span>
   </div>
 
@@ -118,19 +130,18 @@
   </div>
 
   <script>
-    // 常用簡繁對照字典
+    // 常用轉換對照，自動將常見簡體字轉為繁體字
     const dict = {
-      '国':'國','这':'這','来':'來','时':'時','大':'大','动':'動','门':'門','间':'間','关':'關','书':'書','发':'發',
-      '对':'對','说':'說','以':'以','主':'主','生':'生','年':'年','会':'會','同':'同','后':'後','自':'自','下':'下',
-      '得':'得','看':'看','家':'家','种':'種','学':'學','多':'多','心':'心','法':'法','要':'要','出':'出','人':'人',
-      '着':'著','体':'體','问':'問','只':'隻','样':'樣','现':'現','能':'能','成':'成','过':'過','里':'裡','面':'面',
-      '好':'好','应':'應','想':'想','见':'見','分':'分','点':'點','作':'作','开':'開','位':'位','经':'經','公':'公',
-      '长':'長','明':'明','相':'相','爱':'愛','备':'備','变':'變','标':'標','表':'錶','别':'別','病':'病','产':'產',
-      '车':'車','传':'傳','当':'當','党':'黨','导':'導','队':'隊','风':'風','复':'複','个':'個','给':'給','观':'觀',
-      '机':'機','极':'極','计':'計','记':'記','见':'見','简':'簡','节':'節','进':'進','军':'軍','开':'開','类':'類',
-      '离':'離','两':'兩','难':'難','气':'氣','亲':'親','确':'確','认':'認','设':'設','识':'識','实':'實','数':'數',
-      '头':'頭','图':'圖','无':'無','系':'係','显':'顯','选':'選','压':'壓','亚':'亞','业':'業','义':'義','议':'議',
-      '运':'運','战':'戰','质':'質','种':'種','重':'重','总':'總','组':'組'
+      '国':'國','这':'這','来':'來','时':'時','动':'動','门':'門','间':'間','关':'關','书':'書','发':'發',
+      '对':'對','说':'說','会':'會','后':'後','种':'種','学':'學','体':'體','问':'問','只':'隻','样':'樣',
+      '现':'現','过':'過','里':'裡','面':'面','应':'應','见':'見','点':'點','开':'開','经':'經','长':'長',
+      '爱':'愛','备':'備','变':'變','标':'標','别':'別','产':'產','车':'車','传':'傳','当':'當','党':'黨',
+      '导':'導','队':'隊','风':'風','复':'複','个':'個','给':'給','观':'觀','机':'機','极':'極','计':'計',
+      '记':'記','简':'簡','节':'節','进':'進','军':'軍','类':'類','离':'離','两':'兩','难':'難','气':'氣',
+      '亲':'親','确':'確','认':'認','设':'設','识':'識','实':'實','数':'數','头':'頭','图':'圖','无':'無',
+      '系':'係','显':'顯','选':'選','压':'壓','亚':'亞','业':'業','义':'義','议':'議','运':'運','战':'戰',
+      '质':'質','重':'重','总':'總','组':'組','东':'東','陕':'陝','广':'廣','场':'場','报':'報','诉':'訴',
+      '乐':'樂','师':'師','师':'師','张':'張','强':'強','话':'話','听':'聽','写':'寫','读':'讀','欢':'歡'
     };
 
     function fastS2T(text) {
@@ -144,28 +155,47 @@
     const fontDecBtn = document.getElementById('fontDecBtn');
     const lineIncBtn = document.getElementById('lineIncBtn');
     const lineDecBtn = document.getElementById('lineDecBtn');
+    const progressBtn = document.getElementById('progressBtn');
     const statusText = document.getElementById('statusText');
 
-    // 1. 滾動隱藏/顯示工具列（支援 iOS Safari PWA 滾動特徵）
-    let lastScrollY = 0;
-    
-    function handleScroll() {
-      const currentScrollY = window.pageYOffset || document.documentElement.scrollTop || document.body.scrollTop || 0;
+    // 1. 點擊螢幕任意空白處切換隱藏/顯示工具列
+    document.addEventListener('click', (e) => {
+      // 若點擊的是工具列內部的按鈕/元素，不觸發隱藏
+      if (toolbar.contains(e.target)) return;
+      toolbar.classList.toggle('hidden');
+    });
+
+    // 2. 閱讀進度計算與顯示
+    function updateProgress() {
+      const scrollTop = window.pageYOffset || document.documentElement.scrollTop || document.body.scrollTop || 0;
+      const scrollHeight = document.documentElement.scrollHeight - document.documentElement.clientHeight;
       
-      // 向下滑動且超過 30px 時隱藏
-      if (currentScrollY > lastScrollY && currentScrollY > 30) {
-        toolbar.classList.add('hidden');
-      } else if (currentScrollY < lastScrollY) {
-        // 向上滑動時顯示
-        toolbar.classList.remove('hidden');
+      if (scrollHeight <= 0) {
+        progressBtn.textContent = '0%';
+        return;
       }
-      lastScrollY = currentScrollY;
+
+      const percent = Math.min(100, Math.max(0, Math.round((scrollTop / scrollHeight) * 100)));
+      progressBtn.textContent = `${percent}%`;
     }
 
-    window.addEventListener('scroll', handleScroll, { passive: true });
-    document.addEventListener('scroll', handleScroll, { passive: true });
+    window.addEventListener('scroll', updateProgress, { passive: true });
 
-    // 2. 自動偵測 GBK / UTF-8 編碼並轉換，解決中文亂碼問題
+    // 3. 點擊進度按鈕輸入 % 數快轉
+    progressBtn.addEventListener('click', (e) => {
+      e.stopPropagation(); // 防止觸發工具列隱藏
+      const input = prompt('請輸入要跳轉的進度百分比 (0 - 100):', parseInt(progressBtn.textContent) || 0);
+      if (input !== null) {
+        const targetPercent = parseFloat(input);
+        if (!isNaN(targetPercent) && targetPercent >= 0 && targetPercent <= 100) {
+          const scrollHeight = document.documentElement.scrollHeight - document.documentElement.clientHeight;
+          const targetY = (targetPercent / 100) * scrollHeight;
+          window.scrollTo({ top: targetY, behavior: 'smooth' });
+        }
+      }
+    });
+
+    // 4. 自動偵測 GBK / UTF-8 編碼並載入檔案
     fileInput.addEventListener('change', async (e) => {
       const file = e.target.files[0];
       if (!file) return;
@@ -177,18 +207,16 @@
         const arrayBuffer = await file.arrayBuffer();
         const uint8Array = new Uint8Array(arrayBuffer);
 
-        // 偵測是否為 UTF-8 或 GBK 編碼
         let encoding = 'utf-8';
         try {
           const utf8Decoder = new TextDecoder('utf-8', { fatal: true });
           utf8Decoder.decode(uint8Array.subarray(0, 10000));
         } catch (err) {
-          // 若 UTF-8 解析失敗則切換為 GB18030 (相容 GBK / GB2312 中文檔案)
           encoding = 'gb18030';
         }
 
         const decoder = new TextDecoder(encoding);
-        const chunkSize = 200000; // 每次處理 20萬 位元組
+        const chunkSize = 200000;
         let offset = 0;
 
         while (offset < uint8Array.length) {
@@ -196,7 +224,6 @@
           const isFinal = offset + chunkSize >= uint8Array.length;
           const textChunk = decoder.decode(chunk, { stream: !isFinal });
 
-          // 轉繁體並寫入
           const convertedChunk = fastS2T(textChunk);
           textContent.appendChild(document.createTextNode(convertedChunk));
 
@@ -210,34 +237,38 @@
         statusText.textContent = '';
         window.scrollTo({ top: 0, behavior: 'smooth' });
         toolbar.classList.remove('hidden');
+        updateProgress();
       } catch (err) {
         console.error(err);
         statusText.textContent = '讀取失敗';
       }
     });
 
-    // 3. 字體大小調整
+    // 5. 字體與行距調整
     let currentFontSize = 18;
-    fontIncBtn.addEventListener('click', () => {
+    fontIncBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
       currentFontSize += 1;
       document.documentElement.style.setProperty('--font-size', currentFontSize + 'px');
     });
 
-    fontDecBtn.addEventListener('click', () => {
+    fontDecBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
       if (currentFontSize > 8) {
         currentFontSize -= 1;
         document.documentElement.style.setProperty('--font-size', currentFontSize + 'px');
       }
     });
 
-    // 4. 行距調整
     let currentLineHeight = 1.8;
-    lineIncBtn.addEventListener('click', () => {
+    lineIncBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
       currentLineHeight = parseFloat((currentLineHeight + 0.1).toFixed(1));
       document.documentElement.style.setProperty('--line-height', currentLineHeight);
     });
 
-    lineDecBtn.addEventListener('click', () => {
+    lineDecBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
       if (currentLineHeight > 1.0) {
         currentLineHeight = parseFloat((currentLineHeight - 0.1).toFixed(1));
         document.documentElement.style.setProperty('--line-height', currentLineHeight);
