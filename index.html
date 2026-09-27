@@ -40,7 +40,7 @@
       -webkit-overflow-scrolling: touch;
     }
 
-    /* 頂部工具列：單列緊湊佈局 */
+    /* 頂部工具列 */
     .toolbar {
       position: fixed;
       top: 0;
@@ -53,7 +53,7 @@
       border-bottom: 1px solid var(--border-color);
       display: flex;
       flex-wrap: nowrap;
-      gap: 6px;
+      gap: 8px;
       align-items: center;
       padding: calc(env(safe-area-inset-top) + 8px) 12px 8px 12px;
       overflow-x: auto;
@@ -73,7 +73,7 @@
       background-color: var(--bg-color);
       color: var(--text-color);
       border: 1px solid var(--border-color);
-      padding: 5px 8px;
+      padding: 5px 10px;
       border-radius: 6px;
       font-size: 13px;
       cursor: pointer;
@@ -97,8 +97,8 @@
     .progress-slider-container {
       display: flex;
       align-items: center;
-      width: 90px;
-      flex-shrink: 0;
+      flex: 1;
+      min-width: 100px;
     }
 
     .progress-slider {
@@ -125,10 +125,10 @@
       display: none;
     }
 
-    /* 文章內容區塊 */
+    /* 文章內容區塊：左右邊距改為 0px 佔滿全螢幕 */
     .content-container {
       width: 100%;
-      padding: calc(env(safe-area-inset-top) + 60px) 16px calc(env(safe-area-inset-bottom) + 60px) 16px;
+      padding: calc(env(safe-area-inset-top) + 60px) 0px calc(env(safe-area-inset-bottom) + 60px) 0px;
       font-size: var(--font-size);
       line-height: var(--line-height);
       word-break: break-word;
@@ -148,12 +148,6 @@
   <div class="toolbar" id="toolbar">
     <label class="btn" for="fileInput">📁 開啟檔案</label>
     <input type="file" id="fileInput" accept=".txt,.html,.md,.text">
-    
-    <button class="btn" id="fontIncBtn">字體 +</button>
-    <button class="btn" id="fontDecBtn">字體 -</button>
-    
-    <button class="btn" id="lineIncBtn">行距 +</button>
-    <button class="btn" id="lineDecBtn">行距 -</button>
 
     <button class="btn progress-btn" id="progressBtn">0.00%</button>
 
@@ -175,25 +169,17 @@
     // 將各類引號轉為標準繁體中文標點「」與『』
     function formatQuotes(text) {
       return text
-        // 先替換雙引號 “ ” 轉為 「 」
         .replace(/“/g, '「')
         .replace(/”/g, '」')
-        // 替換單引號 ‘ ’ 轉為 『 』
         .replace(/‘/g, '『')
         .replace(/’/g, '』')
-        // 配對處理英文雙引號 "text" 轉成 「text」
         .replace(/"([^"]+)"/g, '「$1」')
-        // 配對處理英文單引號 'text' 轉成 『text』
         .replace(/'([^']+)'/g, '『$1』');
     }
 
     const toolbar = document.getElementById('toolbar');
     const textContent = document.getElementById('textContent');
     const fileInput = document.getElementById('fileInput');
-    const fontIncBtn = document.getElementById('fontIncBtn');
-    const fontDecBtn = document.getElementById('fontDecBtn');
-    const lineIncBtn = document.getElementById('lineIncBtn');
-    const lineDecBtn = document.getElementById('lineDecBtn');
     const progressBtn = document.getElementById('progressBtn');
     const progressSlider = document.getElementById('progressSlider');
     const statusText = document.getElementById('statusText');
@@ -296,7 +282,6 @@
           const isFinal = offset + chunkSize >= uint8Array.length;
           const textChunk = decoder.decode(chunk, { stream: !isFinal });
 
-          // 先進行繁簡轉換，再修正引號
           const convertedChunk = formatQuotes(converter(textChunk));
           fragment.appendChild(document.createTextNode(convertedChunk));
 
@@ -313,37 +298,6 @@
       } catch (err) {
         console.error(err);
         statusText.textContent = '載入失敗';
-      }
-    });
-
-    // 6. 字體與行距調整
-    let currentFontSize = 26;
-    fontIncBtn.addEventListener('click', (e) => {
-      e.stopPropagation();
-      currentFontSize += 1;
-      document.documentElement.style.setProperty('--font-size', currentFontSize + 'px');
-    });
-
-    fontDecBtn.addEventListener('click', (e) => {
-      e.stopPropagation();
-      if (currentFontSize > 10) {
-        currentFontSize -= 1;
-        document.documentElement.style.setProperty('--font-size', currentFontSize + 'px');
-      }
-    });
-
-    let currentLineHeight = 1.3;
-    lineIncBtn.addEventListener('click', (e) => {
-      e.stopPropagation();
-      currentLineHeight = parseFloat((currentLineHeight + 0.1).toFixed(1));
-      document.documentElement.style.setProperty('--line-height', currentLineHeight);
-    });
-
-    lineDecBtn.addEventListener('click', (e) => {
-      e.stopPropagation();
-      if (currentLineHeight > 0.8) {
-        currentLineHeight = parseFloat((currentLineHeight - 0.1).toFixed(1));
-        document.documentElement.style.setProperty('--line-height', currentLineHeight);
       }
     });
   </script>
