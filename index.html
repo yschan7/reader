@@ -1,240 +1,188 @@
 <!DOCTYPE html>
-<html lang="zh-TW">
+<html lang="zh-Hant">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>TXT 閱讀器</title>
-    <!-- 全螢幕 PWA 設定 -->
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <style>
-        :root {
-            --bg: #121212;
-            --text: #D2C0A5;
-            --panel: rgba(30, 28, 25, 0.92);
-        }
-        body {
-            margin: 0;
-            background-color: var(--bg);
-            color: var(--text);
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "PingFang TC", sans-serif;
-            padding-bottom: env(safe-area-inset-bottom);
-        }
-        #content {
-            max-width: 800px;
-            margin: 0 auto;
-            padding: 40px 20px calc(100px + env(safe-area-inset-bottom));
-            line-height: 1.85;
-            font-size: 18px;
-            white-space: pre-wrap;
-            word-break: break-word;
-            letter-spacing: 0.5px;
-        }
-        #status {
-            text-align: center;
-            padding: 10px;
-            font-size: 14px;
-            opacity: 0.6;
-        }
-        /* 懸浮控制列 (自動隱藏 + 適應 iPhone 底部安全區) */
-        #controls {
-            position: fixed;
-            bottom: calc(25px + env(safe-area-inset-bottom));
-            left: 50%;
-            transform: translateX(-50%);
-            background: var(--panel);
-            backdrop-filter: blur(10px);
-            border: 1px solid rgba(210, 192, 165, 0.2);
-            border-radius: 25px;
-            padding: 8px 18px;
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            box-shadow: 0 6px 20px rgba(0,0,0,0.6);
-            z-index: 100;
-            transition: transform 0.3s ease, opacity 0.3s ease;
-        }
-        #controls.hidden {
-            transform: translate(-50%, 120px);
-            opacity: 0;
-            pointer-events: none;
-        }
-        button, label {
-            background: none;
-            border: none;
-            color: var(--text);
-            font-size: 15px;
-            cursor: pointer;
-            padding: 4px 6px;
-            font-weight: 500;
-        }
-        #progress-text {
-            font-size: 14px;
-            color: var(--text);
-            opacity: 0.85;
-            font-weight: 600;
-            padding: 0 4px;
-        }
-        input[type="file"] { display: none; }
-    </style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <!-- Safari 全螢幕 Web App 模式（加到主畫面後可隱藏網址列） -->
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <title>極簡閱讀器</title>
+  <style>
+    :root {
+      --bg-color: #121212;
+      --text-color: #e0e0e0;
+      --panel-bg: #1e1e1e;
+      --border-color: #333;
+      --font-size: 18px;
+      --line-height: 1.8;
+    }
+
+    /* 亮色主題 */
+    body.light-theme {
+      --bg-color: #f9f9f9;
+      --text-color: #1a1a1a;
+      --panel-bg: #ffffff;
+      --border-color: #e0e0e0;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      background-color: var(--bg-color);
+      color: var(--text-color);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      transition: background-color 0.3s, color 0.3s;
+      /* 支援 iPhone 瀏海與底部 Safe Area */
+      padding-top: env(safe-area-inset-top);
+      padding-bottom: env(safe-area-inset-bottom);
+    }
+
+    /* 固定頂部工具列 */
+    .toolbar {
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      background-color: var(--panel-bg);
+      border-bottom: 1px solid var(--border-color);
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      align-items: center;
+      padding: 10px 12px;
+    }
+
+    .btn {
+      background-color: var(--bg-color);
+      color: var(--text-color);
+      border: 1px solid var(--border-color);
+      padding: 6px 12px;
+      border-radius: 6px;
+      font-size: 14px;
+      cursor: pointer;
+    }
+
+    .btn:active {
+      opacity: 0.7;
+    }
+
+    input[type="file"] {
+      display: none;
+    }
+
+    /* 文章內容區塊：左右完全無邊距 (padding: 0) */
+    .content-container {
+      width: 100%;
+      padding: 16px 0; /* 上下留白，左右完全拉到最盡 */
+      font-size: var(--font-size);
+      line-height: var(--line-height);
+      word-break: break-word;
+      white-space: pre-wrap;
+    }
+
+    .content-container p {
+      margin-bottom: 1em;
+    }
+  </style>
 </head>
 <body>
 
-    <div id="content">點擊下方「📁 開啟」選擇 TXT 小說檔...</div>
-    <div id="status"></div>
+  <!-- 控制工具列 -->
+  <div class="toolbar">
+    <label class="btn" for="fileInput">📁 開啟檔案</label>
+    <input type="file" id="fileInput" accept=".txt,.html,.md">
+    
+    <button class="btn" id="themeBtn">🌙 切換主題</button>
+    <button class="btn" id="fontIncBtn">字體 +</button>
+    <button class="btn" id="fontDecBtn">字體 -</button>
+    <button class="btn" id="lineHeightBtn">行距: 1.8x</button>
+  </div>
 
-    <div id="controls">
-        <label for="fileInput">📁 開啟</label>
-        <input type="file" id="fileInput" accept=".txt">
-        <button id="btnPrev">上一頁</button>
-        <span id="progress-text">0.0%</span>
-        <button id="btnNext">下一頁</button>
-        <button id="btnFontDown">A-</button>
-        <button id="btnFontUp">A+</button>
-    </div>
+  <!-- 閱讀區域 -->
+  <div class="content-container" id="textContent">
+    請點擊上方「開啟檔案」載入文章，或直接在此貼上內文...
+  </div>
 
-    <script>
-        const content = document.getElementById('content');
-        const fileInput = document.getElementById('fileInput');
-        const statusDiv = document.getElementById('status');
-        const progressText = document.getElementById('progress-text');
-        const controls = document.getElementById('controls');
-        
-        let fullText = "";
-        let chunkSize = 80000; 
-        let currentChunk = 0;
-        let totalChunks = 0;
-        let fontSize = 18;
-
-        // IndexedDB 本地儲存
-        function openDB() {
-            return new Promise((resolve, reject) => {
-                const req = indexedDB.open("ReaderDB", 1);
-                req.onupgradeneeded = e => e.target.result.createObjectStore("books");
-                req.onsuccess = e => resolve(e.target.result);
-                req.onerror = e => reject(e);
-            });
+  <script>
+    // 簡體轉繁體常用字典與轉換函數
+    function convertS2T(str) {
+      if (!str) return '';
+      const s = '两个国这来时大动门间关书发对说以主生年会同后自下得看家种学多心法自要出人着体问只样现能成过里面好法应样想见分点作开位经公长明相得明法';
+      const t = '兩個國這來時大動門間關書發對說以主生年會同後自下得看家種學多心法自要出人著體問隻樣現能成過裏面好法應樣想見分點作開位經公長明相得明法';
+      
+      let result = '';
+      for (let i = 0; i < str.length; i++) {
+        const char = str[i];
+        const index = s.indexOf(char);
+        if (index !== -1) {
+          result += t[index];
+        } else {
+          result += char;
         }
+      }
+      return result;
+    }
 
-        async function saveBook(text) {
-            const db = await openDB();
-            const tx = db.transaction("books", "readwrite");
-            tx.objectStore("books").put(text, "currentBook");
-        }
+    // 元素綁定
+    const textContent = document.getElementById('textContent');
+    const fileInput = document.getElementById('fileInput');
+    const themeBtn = document.getElementById('themeBtn');
+    const fontIncBtn = document.getElementById('fontIncBtn');
+    const fontDecBtn = document.getElementById('fontDecBtn');
+    const lineHeightBtn = document.getElementById('lineHeightBtn');
 
-        async function loadBook() {
-            const db = await openDB();
-            return new Promise((resolve) => {
-                const tx = db.transaction("books", "readonly");
-                const req = tx.objectStore("books").get("currentBook");
-                req.onsuccess = () => resolve(req.result);
-            });
-        }
+    // 1. 檔案讀取與自動簡轉繁
+    fileInput.addEventListener('change', (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
 
-        function updateProgress() {
-            if (!fullText || fullText.length === 0) return;
-            const currentPos = (currentChunk * chunkSize) + window.scrollY;
-            const percent = Math.min(100, Math.max(0, (currentPos / fullText.length) * 100));
-            progressText.innerText = `${percent.toFixed(1)}%`;
-        }
+      const reader = new FileReader();
+      reader.onload = (evt) => {
+        const rawText = evt.target.result;
+        // 自動轉換簡體字為繁體字
+        const convertedText = convertS2T(rawText);
+        textContent.textContent = convertedText;
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      };
+      reader.readAsText(file);
+    });
 
-        function renderChunk(chunkIndex, scrollPos = 0) {
-            if (!fullText) return;
-            currentChunk = Math.max(0, Math.min(chunkIndex, totalChunks - 1));
-            
-            const start = currentChunk * chunkSize;
-            const end = Math.min(start + chunkSize, fullText.length);
-            
-            content.innerText = fullText.substring(start, end);
-            statusDiv.innerText = `--- 第 ${currentChunk + 1} / ${totalChunks} 頁 (全書 ${(fullText.length/10000).toFixed(0)} 萬字) ---`;
+    // 2. 切換主題
+    themeBtn.addEventListener('click', () => {
+      document.body.classList.toggle('light-theme');
+      const isLight = document.body.classList.contains('light-theme');
+      themeBtn.textContent = isLight ? '☀️ 淺色主題' : '🌙 暗色主題';
+    });
 
-            localStorage.setItem('saved_chunk', currentChunk);
-            
-            if (scrollPos > 0) {
-                setTimeout(() => {
-                    window.scrollTo(0, scrollPos);
-                    updateProgress();
-                }, 50);
-            } else {
-                window.scrollTo(0, 0);
-                updateProgress();
-            }
-        }
+    // 3. 調較字體大小
+    let currentFontSize = 18;
+    fontIncBtn.addEventListener('click', () => {
+      if (currentFontSize < 36) {
+        currentFontSize += 2;
+        document.documentElement.style.setProperty('--font-size', currentFontSize + 'px');
+      }
+    });
 
-        // 智慧編碼解析（自動處置 GBK / UTF-8 亂碼問題）
-        fileInput.addEventListener('change', (e) => {
-            const file = e.target.files[0];
-            if (!file) return;
+    fontDecBtn.addEventListener('click', () => {
+      if (currentFontSize > 12) {
+        currentFontSize -= 2;
+        document.documentElement.style.setProperty('--font-size', currentFontSize + 'px');
+      }
+    });
 
-            statusDiv.innerText = "載入中，請稍候...";
-            const reader = new FileReader();
+    // 4. 調較上下行距
+    const lineHeights = [1.4, 1.8, 2.2];
+    let lineHeightIndex = 1;
 
-            reader.onload = async (evt) => {
-                let text = evt.target.result;
-                
-                // 檢查是否有 UTF-8 亂碼特徵 (EF BF BD)
-                if (text.includes("")) {
-                    // 若有亂碼，改用 GBK 編碼重新讀取
-                    const gbkReader = new FileReader();
-                    gbkReader.onload = async (gbkEvt) => {
-                        fullText = gbkEvt.target.result;
-                        totalChunks = Math.ceil(fullText.length / chunkSize);
-                        await saveBook(fullText);
-                        renderChunk(0);
-                    };
-                    gbkReader.readAsText(file, "GBK");
-                } else {
-                    fullText = text;
-                    totalChunks = Math.ceil(fullText.length / chunkSize);
-                    await saveBook(fullText);
-                    renderChunk(0);
-                }
-            };
-            reader.readAsText(file, "UTF-8");
-        });
-
-        // 翻頁按鈕
-        document.getElementById('btnNext').onclick = () => renderChunk(currentChunk + 1);
-        document.getElementById('btnPrev').onclick = () => renderChunk(currentChunk - 1);
-
-        // 字體大小
-        document.getElementById('btnFontUp').onclick = () => { fontSize += 2; content.style.fontSize = fontSize + 'px'; };
-        document.getElementById('btnFontDown').onclick = () => { if (fontSize > 12) fontSize -= 2; content.style.fontSize = fontSize + 'px'; };
-
-        // 滑動自動隱藏 Bar & 紀錄位置
-        let lastScrollY = window.scrollY;
-        let scrollTimer;
-
-        window.addEventListener('scroll', () => {
-            const currentScrollY = window.scrollY;
-            
-            if (currentScrollY > lastScrollY + 10 && currentScrollY > 50) {
-                controls.classList.add('hidden');
-            } else if (currentScrollY < lastScrollY - 10 || currentScrollY < 50) {
-                controls.classList.remove('hidden');
-            }
-            lastScrollY = currentScrollY;
-
-            updateProgress();
-            clearTimeout(scrollTimer);
-            scrollTimer = setTimeout(() => {
-                localStorage.setItem('saved_scroll_pos', window.scrollY);
-            }, 100);
-        });
-
-        // 載入恢復
-        window.addEventListener('DOMContentLoaded', async () => {
-            const savedText = await loadBook();
-            if (savedText) {
-                fullText = savedText;
-                totalChunks = Math.ceil(fullText.length / chunkSize);
-                
-                const savedChunk = parseInt(localStorage.getItem('saved_chunk') || "0", 10);
-                const savedPos = parseInt(localStorage.getItem('saved_scroll_pos') || "0", 10);
-                
-                renderChunk(savedChunk, savedPos);
-            }
-        });
-    </script>
+    lineHeightBtn.addEventListener('click', () => {
+      lineHeightIndex = (lineHeightIndex + 1) % lineHeights.length;
+      const selectedLineHeight = lineHeights[lineHeightIndex];
+      document.documentElement.style.setProperty('--line-height', selectedLineHeight);
+      lineHeightBtn.textContent = `行距: ${selectedLineHeight}x`;
+    });
+  </script>
 </body>
 </html>
