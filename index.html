@@ -4,7 +4,8 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <!-- 改為不透明純黑狀態列 -->
+  <meta name="apple-mobile-web-app-status-bar-style" content="black">
   
   <!-- 強制瀏覽器與 iOS Web App 抓取最新版本，不使用舊快取 -->
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
@@ -18,10 +19,10 @@
 
   <style>
     :root {
-      --bg-color: #121212;
+      --bg-color: #000000;      /* 改為純黑 */
       --text-color: #e0e0e0;
-      --panel-bg: rgba(30, 30, 30, 0.95);
-      --border-color: #333;
+      --panel-bg: #000000;     /* 工具列改為純黑不透明 */
+      --border-color: #222222;
       --font-size: 26px;
       --line-height: 1.4;
     }
@@ -34,6 +35,7 @@
 
     html {
       scroll-behavior: auto !important;
+      background-color: var(--bg-color);
     }
 
     body {
@@ -46,7 +48,7 @@
       -webkit-overflow-scrolling: touch;
     }
 
-    /* 頂部工具列 */
+    /* 頂部工具列：純黑、完全不透明、無磨砂效果 */
     .toolbar {
       position: fixed;
       top: 0;
@@ -54,8 +56,6 @@
       right: 0;
       z-index: 100;
       background-color: var(--panel-bg);
-      backdrop-filter: blur(10px);
-      -webkit-backdrop-filter: blur(10px);
       border-bottom: 1px solid var(--border-color);
       display: flex;
       flex-wrap: nowrap;
@@ -76,7 +76,7 @@
     }
 
     .btn {
-      background-color: var(--bg-color);
+      background-color: #1a1a1a;
       color: var(--text-color);
       border: 1px solid var(--border-color);
       padding: 5px 10px;
@@ -92,7 +92,7 @@
     }
 
     .progress-btn {
-      background-color: #2a2a2a;
+      background-color: #1a1a1a;
       color: #4CAF50;
       border: 1px solid #4CAF50;
       font-weight: bold;
@@ -112,7 +112,7 @@
       height: 4px;
       -webkit-appearance: none;
       appearance: none;
-      background: #333;
+      background: #222;
       border-radius: 2px;
       outline: none;
     }
@@ -330,7 +330,6 @@
           statusText.textContent = '已恢復閱讀進度';
           setTimeout(() => { statusText.textContent = ''; }, 2000);
           
-          // 稍微延遲跳轉以確保 DOM 渲染完畢
           requestAnimationFrame(() => {
             window.scrollTo(0, savedY);
             updateProgressUI();
